@@ -1,0 +1,667 @@
+#!/bin/perl
+##################################################################
+# @(#) $Id: mrtg-ping-probe,v 2.5 2003/09/13 18:04:29 pwo Exp $
+# @(#) mrtg-ping-probe release $Name: Release_2_2_0 $
+#
+# Copyright (c) 1997-2003 Peter W. Osel <pwo@pwo.de>.
+# All Rights Reserved.
+#
+# See the file COPYRIGHT in the distribution for the exact terms.
+#
+##################################################################
+#
+# "I saw -- from the cathedral -- you were watching me"
+#
+#	-- Tanita Tikaram, `Cathedral Song'
+#	on: Tanita Tikaram, `Ancient Heart', 1988, WEA Records
+#
+##################################################################
+use 5.6.1;
+use Getopt::Std;
+use File::Basename;
+use Config;
+
+$Prog_name = basename($0);		# Who I am
+$Prog_vers = q$Revision: 2.5 $;
+$Prog_id = q$Id: mrtg-ping-probe,v 2.5 2003/09/13 18:04:29 pwo Exp $;
+$Usage = "Usage: $Prog_name [-hsvV] [-d deadtime] [-k count] [-l length] [-o ping_options] [-p [factor*]{min|max|avg|loss|integer}/[factor*]{min|max|avg|loss|integer}] [-r [rsh:][user@]host[:osname]] [-t timeout] host\n";
+
+# Parse Command Line:
+die $Usage unless getopts('d:Dhk:l:o:p:r:st:vV');
+
+# Generic Options
+$Debug		= defined($opt_D) ? $opt_D : 0;
+$PrintHelp	= defined($opt_h) ? $opt_h : 0;
+$Verbose	= defined($opt_v) ? $opt_v : 0;
+$Silent		= defined($opt_s) ? $opt_s : 0;
+$PrintVersion	= defined($opt_V) ? $opt_V : 0;
+
+# Tool Specific Options
+$DeadTime	= defined($opt_d) ? $opt_d : 0;
+$PacketCount	= defined($opt_k) ? $opt_k : "10";
+$PacketLength	= defined($opt_l) ? $opt_l : "56";
+$PingOptions	= defined($opt_o) ? $opt_o : "";
+$PickList	= defined($opt_p) ? $opt_p : "max/min";
+$RemotePing	= defined($opt_r) ? $opt_r : "";
+$TimeOut	= defined($opt_t) ? $opt_t : 0;
+
+# Check Sanity of Arguments
+$err += check_numeric("-d", $DeadTime);
+$err += check_numeric("-k", $PacketCount);
+$err += check_numeric("-l", $PacketLength);
+$err += check_numeric("-t", $TimeOut);
+$err += check_picklst("-p", $PickList);
+
+if ($err) {
+	print STDERR $Usage;
+	exit(1);
+	}
+
+
+if ($PrintVersion ) {
+	print STDERR "$Prog_name: $Prog_vers\n";
+	exit(0);
+	}
+
+if ($PrintHelp) {
+	print $Usage;
+	exit(0);
+	}
+
+if (@ARGV > 1) {
+	print STDERR "$Prog_name: ERROR: ignoring superfluous arguments\n";
+	print STDERR "$Usage";
+	}
+
+if (@ARGV < 1) {
+	print STDERR "$Prog_name: FATAL: ping what?\n";
+	print STDERR "$Usage";
+	exit(1);
+	}
+
+
+($HostToPing) = @ARGV;
+
+
+($pt{min}, $pt{avg}, $pt{max}, $pt{loss}) =
+	ping($HostToPing, $PacketLength, $PacketCount, $TimeOut);
+
+print "$Prog_name: DBG: main(): ping() ret: $pt{min}, $pt{avg}, $pt{max}, $pt{loss}\n" if $Debug;
+
+$PickList =~ /^(?:(\d+)\*)?(\w+)\/(?:(\d+)\*)?(\w+)$/;
+($f1, $p1, $f2, $p2) = ($1, $2, $3, $4);
+$f1 = $f1 ? $f1 : 1;
+$f2 = $f2 ? $f2 : 1;
+print "$Prog_name: DBG: main(): before psub: f = ($f1 $f2); p = ($p1 $p2)\n" if $Debug;
+
+$p1 = $p1 =~ /^\d+$/ ? $p1 : $pt{$p1};
+$p2 = $p2 =~ /^\d+$/ ? $p2 : $pt{$p2};
+
+print "$Prog_name: DBG: main(): after  psub: f = ($f1 $f2); p = ($p1 $p2)\n" if $Debug;
+
+# The external mrtg probe returns up to 4 lines of output:
+#	1. Line: current state of the 'incoming bytes counter'
+#	2. Line: current state of the 'outgoing bytes counter'
+#	3. Line: string, telling the uptime of the target.
+#	4. Line: telling the name of the target.
+# We leave out line 3, and 4.
+
+printf "%d\n%d\n", $f1 * $p1, $f2 * $p2;
+
+exit(0);
+
+
+##################################################################
+sub check_numeric {
+	my($opt, $val) = @_;
+	my($err) = 0;
+
+	unless ($val =~ /^\d+$/) {
+		print STDERR "$Prog_name: FATAL: option $opt requires numeric argument.\n";
+		++$err;
+		}
+	return($err);
+	}
+
+##################################################################
+sub check_picklst {
+	my($opt, $val) = @_;
+	my($err, $i) = (0, 0);
+	my(@v, @n);
+
+	unless ($val =~ /^(?:(\d+)\*)?(\w+)\/(?:(\d+)\*)?(\w+)$/) {
+		print STDERR "$Prog_name: FATAL: option $opt requires [factor*]word/[factor*]word argument, I found \"$val\"\n";
+		++$err;
+		}
+	@n = ($1, $3);
+	@v = ($2, $4);
+
+	print "$Prog_name: DBG: check_picklst(): n = (@n); v = (@v)\n" if $Debug;
+
+	foreach $i (0..1) {
+		unless ($v[$i] =~ /^(min|max|avg|loss|\d+)$/) {
+			print STDERR "$Prog_name: FATAL: option $opt uses unknown item $v[$i]\n";
+			print STDERR "$Prog_name: FATAL: option $opt may choose from min|max|avg|loss or number\n";
+			++$err;
+			}
+		}
+
+	return($err);
+	}
+
+##################################################################
+# ping selects the external or internal, built-in ping method
+# and starts the external ping program optionally with a
+# timeout to abort external ping programs that seem to hang
+# when the target is unreachable.
+
+sub ping {
+	my($host, $length, $count, $timeout) = @_;
+	my(%pt);
+
+	($pt{min}, $pt{avg}, $pt{max}, $pt{loss}) =
+		ext_ping($host, $length, $count, $timeout);
+
+	return($pt{min}, $pt{avg}, $pt{max}, $pt{loss});
+	}
+
+##################################################################
+# ping host retrieve and return min, avg, max round trip time
+# relying on finding a standard ping in PATH.
+# Try to not be platform specific if at all possible.
+#
+sub ext_ping {
+	my($host, $length, $count, $timeout) = @_;
+	my(%ping, $ping_output, $redirect_stderr, $pid, %pt);
+	my($alarm_exists);
+
+	# List of known ping programs
+	%ping = (
+		'MSWin32'	=> "ping -l $length -n $count $host",
+		'aix'		=> "/etc/ping $host $length $count",
+		'bsdos'		=> "/bin/ping -s $length -c $count $host",
+		'darwin'	=> "/sbin/ping -s $length -c $count $host",
+		'dec_osf'	=> "/sbin/ping -s $length -c $count $host",
+		'freebsd'	=> "/sbin/ping -s $length -c $count $host",
+		'hpux'		=> "/etc/ping $host $length $count",
+		'irix'		=> "/usr/etc/ping -s $length -c $count $host",
+		'linux'		=> "/bin/ping -s $length -c $count $host",
+		'netbsd'	=> "/sbin/ping -s $length -c $count $host",
+		'openbsd'	=> "/sbin/ping -s $length -c $count $host",
+		'os2'		=> "ping $host $length $count",
+		'OS/2'		=> "ping $host $length $count",
+		'solaris'	=> "/usr/sbin/ping -s $host $length $count",
+		'sunos'		=> "/usr/etc/ping -s $host $length $count",
+		);
+
+	unless (defined($ping{$Config{'osname'}})) {
+		print STDERR "${Prog_name}: FATAL: Not yet configured for $Config{'osname'}\n";
+		exit(1);
+		}
+
+	# add ping options, if any
+	$ping{$Config{'osname'}} =~ s/ / $PingOptions / if $PingOptions;
+
+	# windows 95/98 does not support stderr redirection...
+	# also OS/2 users reported problems with stderr redirection...
+	$redirect_stderr = $Config{'osname'} =~ /^(MSWin32|os2|OS\/2)$/i ? "" : "2>&1";
+
+	# freebsd > 3.x does not allow option -s,
+	# unless we run as root (which we shouldn't)
+	if (($Config{'osname'} =~ /^freebsd$/i) && $>) {
+		# remove option -s from ping command
+		$ping{$Config{'osname'}} =~ s/ -s \d+//;
+		print "$Prog_name: DBG: ext_ping(): ping = ($ping{$Config{'osname'}})\n" if $Debug;
+		}
+
+	# initialize return values
+	$pt{loss} = 100;
+	$pt{min} = $pt{avg} = $pt{max} = $DeadTime;
+	$ping_output = "";
+
+	# finally call the external ping program and read its output:
+	unless ($pid = open(PING, "$ping{$Config{'osname'}} $redirect_stderr |")) {
+		print STDERR "${Prog_name}: FATAL: Can't open $ping{$Config{'osname'}}: $!";
+		exit(1);
+		}
+
+	$alarm_exists = eval { alarm(0); 1 };
+	print STDERR "${Prog_name}: WARN: built-in alarm() does not exist, can't timeout ping command\n"
+		if $Verbose && $timeout && !$alarm_exists;
+
+	if ($alarm_exists) {
+		# read and timeout ping() if it takes too long...
+		eval {
+			local $SIG{ALRM} = sub { die "alarm\n" };	# \n required!
+			alarm $timeout;
+			while (<PING>) {
+				$ping_output .= $_;
+				}
+			alarm 0;
+			};
+
+		if ($@) {
+			die unless $@ eq "alarm\n";	# propagate unexpected errors
+			# timed out, kill child, get remaining output, ...
+			kill("TERM", $pid);
+			while (<PING>) {
+				$ping_output .= $_;
+				}
+
+			unless ($Silent) {
+				print STDERR "${Prog_name}: ERROR: external ping hit timeout $timeout, assuming target $host is unreachable\n";
+				print STDERR "${Prog_name}: INFO: The output of the ping command $ping{$Config{'osname'}} was:\n";
+				print STDERR "$ping_output\n";
+				}
+			}
+		}
+	else {
+		# read and hope that ping() will return in time...
+		while (<PING>) {
+			$ping_output .= $_;
+			}
+
+		}
+
+	# didn't time out, analyze ping output.
+	close(PING);
+
+	# try to find round trip times
+	if ($ping_output =~ m@(?:round-trip|rtt)(?:\s+\(ms\))?\s+min/avg/max(?:/(?:m|std)-?dev)?\s+=\s+(\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)@m) {
+		$pt{min} = $1; $pt{avg} = $2; $pt{max} = $3;
+		}
+	elsif ($ping_output =~ m@^\s+\w+\s+=\s+(\d+(?:\.\d+)?)ms,\s+\w+\s+=\s+(\d+(?:\.\d+)?)ms,\s+\w+\s+=\s+(\d+(?:\.\d+)?)ms\s+$@m) {
+		# this should catch most windows locales
+		$pt{min} = $1; $pt{avg} = $3; $pt{max} = $2;
+		}
+	elsif ($ping_output =~ m@最短\s+=\s+(\d+)ms，最长\s+=\s+(\d+)ms，平均\s+=\s+(\d+)ms@m) {
+		# Windows chinese locale
+		$pt{min} = $1; $pt{avg} = $3; $pt{max} = $2;
+		}
+	else {
+		unless ($Silent) {
+			print STDERR "${Prog_name}: ERROR: Could not find ping summary for $host\n";
+			print STDERR "${Prog_name}: INFO: The output of the ping command $ping{$Config{'osname'}} was:\n";
+			print STDERR "$ping_output\n";
+			}
+		}
+
+	# try to find packet loss
+	# ToDo: only if requested?)
+	if ($ping_output =~ m@(\d+)% (?:packet )?loss(?:$|,)@m) {
+		# Unix
+		$pt{loss} = $1;
+		}
+	elsif ($ping_output =~ m@(\d+)% (?:丢失)@m) {
+		# Windows chinese locale
+		$pt{loss} = $1;
+		}
+	elsif ($ping_output =~ m@\(perte\s+(\d+)%\),\s+$@m) {
+		# Windows french locale
+		$pt{loss} = $1;
+		}
+	elsif ($ping_output =~ m@\((\d+)%\s+(?:loss|perdidos|persi|de perda|Verlust)\),\s+$@m) {
+		# Windows portugesee, spanish, brazilian, german locale
+		$pt{loss} = $1;
+		}
+	else {
+		unless ($Silent) {
+			print STDERR "${Prog_name}: ERROR: Could not find packet loss summary for $host\n";
+			print STDERR "${Prog_name}: INFO: The output of the ping command $ping{$Config{'osname'}} was:\n";
+			print STDERR "$ping_output\n";
+			}
+		}
+
+	# If pping timed out, values are still set to 100% loss, and rtt to DeadTime
+	# On windows, 100% loss will still show a rtt of 0, so reset it to DeadTime
+
+	print "$Prog_name: DBG: ext_ping(): ret-val-mat: $pt{min}, $pt{avg}, $pt{max}, $pt{loss}\n" if $Debug;
+	$pt{min} = $pt{avg} = $pt{max} = $DeadTime if $pt{loss} == 100;
+	print "$Prog_name: DBG: ext_ping(): ret-val-res: $pt{min}, $pt{avg}, $pt{max}, $pt{loss}\n" if $Debug;
+	return($pt{min}, $pt{avg}, $pt{max}, $pt{loss});
+}
+
+__END__
+
+=head1 NAME
+
+mrtg-ping-probe - a round trip time and packet loss probe for MRTG
+
+=head1 SYNOPSIS
+
+B<mrtg-ping-probe>
+[ B<-hsvV> ]
+[ B<-d> I<deadtime> ]
+[ B<-k> I<count> ]
+[ B<-l> I<length> ]
+[ B<-o> I<ping_options> ]
+[ B<-p> [I<factor>*]I<item>/[I<factor>*]I<item> ]
+[ B<-r> I<[rsh:][user@]host[:osname]> ]
+[ B<-t> I<timeout> ]
+I<host>
+
+=head1 DESCRIPTION
+
+B<mrtg-ping-probe> pings the given host I<host> and prints on stdout
+two lines extracted from the ping output.  The default is to print
+the maximum, and the minimum round trip time.
+
+It is meant to be called by the Multi Router Traffic Grapher (MRTG).
+
+
+=head1 OPTIONS
+
+
+=over 8
+
+
+=item B<-h>
+
+print help on stdout and exit.
+
+
+=item B<-v>
+
+Be more verbose.
+
+
+=item B<-V>
+
+Print version number on stderr and exit.
+
+
+=item B<-d> I<deadtime>
+
+Specifies the value we return for round trip times in case we assume
+that the target is down.  The default is zero.  We assume that the
+target is unreachable, if we cannot find the ping summary or if the
+ping program was aborted because of a set timeout.
+
+For WAN connections that usually have round trip times of 10ms and
+higher, ranges of zero round trip time are highly visible.  In a LAN
+environment, you might set it to a high value, e.g. 999, which however
+might change the scale of the graphs in such a way that you hardly see
+the regular round trip times.  You might use mrtg-misc-probe's pong
+option to generate a graph that shows reachability of targets, instead.
+
+
+=item B<-k> I<count>
+
+Specifies the number of of ping packets to be sent.  The default is to
+send 10 ping packets.
+
+
+=item B<-l> I<length>
+
+Use I<length> as the length of the data portion of the ICMP ECHO
+request packet.  The default I<length> is 56 data bytes.
+
+
+=item B<-o> I<ping_options>
+
+Pass I<ping_options> to the ping program.  You can use this generic
+option to e.g. pass an option to ping to suppress displaying addresses
+as host names.  This helps to prevent the ping to fail because it
+cannot map hostnames to IP addresses and vice versa.  To pass several
+arguments, enclose the options in quotes.  Check the documentation of
+your ping program for possible options.
+
+
+=item B<-p> [I<factor>B<*>]I<item>/[I<factor>B<*>]I<item>
+
+Pick the values you want mrtg-ping-probe to return.  Allowed values for
+I<item> are: B<min>, B<max>, B<avg>, B<loss>, or an I<integer>.  Each item
+can be preceded by a integer factor used to multiply the value returned
+by the ping program.  The default pick-list is B<min/max>.
+
+To display ping times in microseconds instead of milliseconds, use: B<-p
+1000*max/1000*min>.
+
+
+=item B<-r> I<[rsh:][user@]host[:osname]>
+
+B<Not Yet Implemented>
+
+run ping on remote host I<host>, as user I<user> (or as local user, if
+no user is given).  Uses B<rsh -n> to start program on remote host,
+unless you provide a different program name.  If the remote host has a
+different system type than the local host (if the osname is different)
+you have to say so.
+
+This option can be used if you run mrtg on a host that cannot ping to
+the final target, and you cannot install mrtg and/or perl on the
+intermediate host used to ping the final target.
+
+
+=item B<-s>
+
+Silent mode.  Do not generate error messages if there is no response
+from the ping program or if it ran into the timeout.  Usually cron will
+mail you these error messages, which might be helpful to debug
+problems.
+
+
+=item B<-t> I<timeout>
+
+Abort the external ping program after I<timeout> seconds.  A I<timeout>
+value of zero (the default) means, we do not abort the external ping
+program.
+
+If mrtg-ping-probe seems to hang forever, check your ping program, it
+might be a version that wants to B<receive> the given number of
+ECHO_RESPONSE packets instead of just sending them.  If your target is
+unreachable, these pings ping forever.
+
+You want to choose I<timeout> as short as possible to leave mrtg enough
+time for all your other targets, but long enough so you do not abort
+pings (too often).  You might use (I<count> * worst case round trip
+time) as a starting point.  (Or install a ping program that is not
+broken ;-)
+
+If your perl installation does not implement the built-in alarm()
+function, the timeout option will be ignored.  You will get a warning
+about this only in verbose mode (option B<-v>).  I have not found a
+perl installation on Windows that implements the alarm() built-in
+function on Win32.  So basically on Windows the timeout option is
+not working.
+
+=back
+
+
+=head1 RETURN VALUE
+
+The program exits with an exit value 0, if it believes it was
+successful.
+
+
+=head1 EXAMPLES
+
+=over 4
+
+=item B<mrtg-ping-probe ricochet>
+
+Retrieves the maximum and minimum round trip time to the host
+B<ricochet>, using the default length and count.
+
+
+=item B<mrtg-ping-probe -p max/avg ricochet>
+
+Retrieves the maximum and average round trip time to the host
+B<ricochet>, using the default length and count.
+
+
+=item B<mrtg-ping-probe -p '1000*max/1000*avg' ricochet>
+
+Retrieves the maximum and average round trip time to the host
+B<ricochet> multiplied by a factor of 1000, using the default length
+and count.
+
+
+=item B<mrtg-ping-probe -k 17 -l 1000 192.168.192.42>
+
+Retrieves the maximum and minimum round trip time to the host
+192.168.192.42, using 17 1000 data bytes pings.
+
+
+=item B<mrtg-ping-probe -o -n ricochet.pwo.de>
+
+Suppress displaying addresses as host names on Solaris 2 (to protect
+from DNS problems causing the ping to fail) by passing option B<-n> to
+the ping program.
+
+Note that in this example `B<-n>' is not an option for mrtg-ping-probe,
+but gets passed to the ping program.
+
+
+=item B<mrtg-ping-probe -o '-n -I 3' ricochet.pwo.de>
+
+Pass several options B<-n -I 3> to the ping program.
+
+
+=item B<mrtg-ping-probe -p loss/loss ricochet.pwo.de>
+
+Monitors the packet loss for the link to host ricochet.pwo.de.
+
+
+=back
+
+=head1 FILES
+
+B<mrtg-ping-probe> uses an external ping program, like
+F</usr/sbin/ping>.
+
+=head1 SEE ALSO
+
+mrtg(1), mrtg-ping-cfg, ping(1), mrtg.cfg-ping, mrtg-misc-probe(1)
+
+http://www.mrtg.org/
+
+http://pwo.de/projects/mrtg/
+
+=head1 DIAGNOSTICS
+
+=over 4
+
+=item FATAL: Not yet configured for I<osname>
+
+Currently B<mrtg-ping-probe> depends on an external ping program, which
+every operating systems hides in another place.  Also different
+programs require different arguments.  We have a configuration table
+listing the ping program for each operating systems.  You have to
+figure out how to call which program on your platform, and add to the
+information to the table.  Please contribute back any additions, so I
+can include them in the next version.
+
+
+=item ERROR: ignoring superfluous arguments
+
+More than one argument was given.  B<mrtg-ping-probe> will ignore all
+but the first argument.  The first argument is taken as a hostname or
+IP address of an host and B<mrtg-ping-probe> will try to ping it.
+
+=item FATAL: ping what?
+
+No argument was given.  B<mrtg-ping-probe> terminates, as there is
+nothing to ping.
+
+
+=item FATAL: option I<option> requires numeric argument.
+
+The argument for option I<option> was not an integer number.
+
+
+=item FATAL: Can't open ping: I<some reason>
+
+B<mrtg-ping-probe> was not able to execute the external ping program.
+Check the pathname and permissions of the external ping program.
+I<some reason> might give some useful hints.
+
+
+=item ERROR: external ping hit timeout I<timeout>,
+assuming target I<host> is unreachable
+
+We ran into a timeout pinging the target host I<host>.  You might have
+to increase the timeout value (Option B<-t>) if this happens when the
+target is up and the round trip time just happens to be longer than
+usual.
+
+The captured output of the ping program is printed and will (hopefully)
+give further hints why this problem occurred.
+
+This message is not printed if mrtg-ping-probe runs in silent mode
+(Option B<-s>).
+
+
+=item ERROR: Could not find ping summary for I<host>
+
+B<mrtg-ping-probe> was not able to find the ping summary.  Most likely,
+the host is not reachable.  If your operating system changed (e.g. it
+was upgraded to a new version, or a new version of the ping program was
+installed), it might also be necessary to change the regular expression
+that extracts the round trip times.  You might want to use the perl
+script check-ping-fmt (which is part of the source distribution) to test
+the regular expression.
+
+The captured output of the ping program is printed and will (hopefully)
+give further hints why this problem occurred.
+
+This message is not printed if mrtg-ping-probe runs in silent mode
+(Option B<-s>).
+
+
+
+=item ERROR: Could not find packet loss summary for I<host>
+
+B<mrtg-ping-probe> was not able to find the packet loss summary.
+If your operating system changed (e.g. it was upgraded to a new
+version, or a new version of the ping program was installed), it might
+also be necessary to change the regular expression that extracts the
+packet loss.  You might want to use the perl script check-ping-fmt
+(which is part of the source distribution) to test the regular
+expression.
+
+The captured output of the ping program is printed and will (hopefully)
+give further hints why this problem occurred.
+
+This message is not printed if mrtg-ping-probe runs in silent mode
+(Option B<-s>).
+
+
+=back
+
+=head1 RESTRICTIONS
+
+B<mrtg-ping-probe> currently depends on an external ping(1) program.
+If the external program does not support an option, the option given to
+B<mrtg-ping-probe> will be ignored.
+
+Under B<freebsd> release 3.x or later, ping option B<-s>
+I<packet-length> (B<mrtg-ping-probe> option B<-l> I<length>) is only
+allowed to be used when we run as root (which we should not), therefore
+this option is silently removed on B<freebsd> before we call the
+external ping program.
+
+=head1 BUGS
+
+This program has way too many options and tries to support too many
+different systems.
+
+Using this program to monitor sub-millisecond round trip times or
+packet loss might be questionable.
+
+Option B<-r>, remote execution of the ping program, is not yet
+implemented.
+
+
+=head1 COPYRIGHT
+
+Copyright (c) 1997-2003 Peter W. Osel <pwo@pwo.de>.
+All Rights Reserved.
+
+See the file COPYRIGHT in the distribution for the exact terms.
+
+=head1 AUTHOR
+
+Written by Peter W. Osel E<lt>pwo@pwo.deE<gt>.
+http://pwo.de/
+

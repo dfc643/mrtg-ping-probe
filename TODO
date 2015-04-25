@@ -1,0 +1,629 @@
+#######################################################################
+* add md5 sum, gnupg signed. (change pgp to gnupg)
+* more testing needed for packet loss retrieval?
+* only print error messages for values we are asked for ...?
+* support rrdtool ... (replace mrtg-ping-probe by smokeping)?
+
+#######################################################################
+* kill child and verify success, kill with TERM INT HUP KILL signals
+
+	ChangeLog
+		make extra sure we actually kill the child process,
+		cycle through the TERM INT HUP and KILL signals when
+		killing the child process. <pwo@pwo.de>
+
+221a223
+> 	#DBG$ping{$Config{'osname'}} = "./test-kill";
+
+245c247,257
+< 			kill("TERM", $pid);
+---
+> 			#for my $sig (qw(TERM INT HUP KILL)) {
+> 				$sig="INT";
+> 				print STDERR "${Prog_name}: DBG: kill child $pid (via $sig) ...\n";
+> 				kill($sig, $pid);
+> 				sleep 1;
+> 				#last unless kill(0, $pid);
+> 				if (kill(0, $pid)) {
+> 					print STDERR "${Prog_name}: DBG: child $pid survived $sig ...\n";
+> 					}
+> 				print STDERR "${Prog_name}: WARN: kill of child $pid (via $sig) failed...\n";
+> 			#	}
+
+Path: news.infineon.com!newsproxy.muc.infineon.com!dnewsfeed00.dtm.ops.eu.uu.net!dnewsifeed00.dtm.ops.eu.uu.net!bnewsifeed03.bru.ops.eu.uu.net!bnewspeer01.bru.ops.eu.uu.net!emea.uu.net!eusc.inter.net!zrz.TU-Berlin.DE!not-for-mail
+From: anno4000@lublin.zrz.tu-berlin.de (Anno Siegel)
+Newsgroups: comp.lang.perl.misc
+Subject: Re: Need Help: fork / kill / kill 0
+Date: 26 Feb 2003 10:02:28 GMT
+Organization: working, but not speaking for Technische Universitaet Berlin
+Lines: 14
+Message-ID: <b3i3bk$e2p$1@mamenchi.zrz.TU-Berlin.DE>
+References: <b3h3uq$jgq$1@newssrv.hl.siemens.de>
+NNTP-Posting-Host: lublin.zrz.tu-berlin.de
+X-Newsreader: trn 4.0-test74 (May 26, 2000)
+Originator: anno4000@lublin.zrz.tu-berlin.de (Anno Siegel)
+Xref: news.infineon.com comp.lang.perl.misc:463307
+
+Peter W. Osel <pwo@Infineon.COM> wrote in comp.lang.perl.misc:
+> I have a script which starts a child (via open("$commad |)"); Then I try 
+> to kill the child with signal TERM, if this did not kill the child, I 
+> want to kill the child using INT, etc.  The following code does not seem 
+> to work (what am I missing?).  It looks as if kill 0 $pid does not 
+> detect that the child was killed?
+
+You must wait() (or rather waitpid()) for the child process after
+it was killed.  Otherwise, the child process leaves a zombie which
+still can be signalled.
+
+[code snipped]
+
+Anno
+
+
+Path: news.infineon.com!newsproxy.muc.infineon.com!dnewsfeed00.dtm.ops.eu.uu.net!dnewsifeed00.dtm.ops.eu.uu.net!bnewsifeed03.bru.ops.eu.uu.net!bnewspeer01.bru.ops.eu.uu.net!emea.uu.net!fu-berlin.de!uni-berlin.de!port-212-202-168-14.reverse.qdsl-home.DE!not-for-mail
+From: Tina Mueller <usenet@tinita.de>
+Newsgroups: comp.lang.perl.misc
+Subject: Re: Need Help: fork / kill / kill 0
+Date: 26 Feb 2003 08:57:09 GMT
+Organization: http://www.tinita.de/
+Lines: 52
+Sender: tina <tina@lux.tinita.de>
+Message-ID: <tinhaws3q$1hf$tina@news01.tinita.de>
+References: <b3h3uq$jgq$1@newssrv.hl.siemens.de>
+NNTP-Posting-Host: port-212-202-168-14.reverse.qdsl-home.de (212.202.168.14)
+X-Trace: fu-berlin.de 1046249829 53785574 212.202.168.14 (16 [24002])
+X-Orig-Path: not-for-mail
+User-Agent: tin/1.4.6-20020816 ("Aerials") (UNIX) (Linux/2.4.18-4GB (i686))
+Xref: news.infineon.com comp.lang.perl.misc:463303
+
+Peter W. Osel <pwo@infineon.com> wrote:
+> I have a script which starts a child (via open("$commad |)"); Then I try 
+> to kill the child with signal TERM, if this did not kill the child, I 
+> want to kill the child using INT, etc.  The following code does not seem 
+> to work (what am I missing?).  It looks as if kill 0 $pid does not 
+> detect that the child was killed?
+
+> The main script:
+> ---
+> #!/opt/perl_5.6.1/bin/perl -w
+> #
+> $child = "./_test-kill-child.pl";
+> unless ($pid = open(CHILD, "$child |")) {
+>          print STDERR "${0}: FATAL: Can't open $child : $!";
+>          exit(1);
+>          }
+
+> sleep 2;
+
+> for my $sig (qw(TERM INT HUP KILL)) {
+>      print STDERR "${0}: DBG: kill child $pid (via $sig) ...\n";
+>      kill($sig, $pid);
+>      sleep 2;
+>      #last unless kill(0, $pid);
+>      if (kill(0, $pid)) {
+>          print STDERR "${0}: DBG: child $pid survived $sig ...\n";
+>          }
+
+you probably want to add a "last" here in case $pid was killed:
+       else { last }
+
+>      }
+> ---
+> The child script
+> ---
+> #!/opt/perl_5.6.1/bin/perl
+
+> $SIG{CHLD} = 'IGNORE';
+
+put that into the main script and see what happens.
+also always be careful with filehandles while forking.
+see
+ perldoc perlipc
+for details.
+
+hth, tina
+
+-- 
+http://www.tinita.de/     \  enter__| |__the___ _ _ ___
+http://Movies.tinita.de/   \     / _` / _ \/ _ \ '_(_-< of
+http://www.perlquotes.de/   \    \ _,_\ __/\ __/_| /__/ perception
+http://www.tinita.de/peace/link.html - Spread Peace
+
+#######################################################################
+* error message should include version of mrtg-ping-probe,
+	uname -a etc etc
+
+	shell script/batch file to gather needed info in case of
+	problem:
+		perl -V, uname -a
+		mrtg-ping-probe -V
+		mrtg-ping-probe -D ebug trace ...
+
+#######################################################################
+* windows: program around alarm(), timeout not supported:
+
+	ActiveState:
+	The alarm() builtin is not implemented on Win32 because the OS
+	doesn't support it.  The problem is basically that you cannot
+	timeout on blocking system calls on Win32 (with only a few
+	exceptions).  So if Perl would be waiting on e.g. a socket
+	read, there is no way to return from the read() call without
+	having either some data arrive or the thread itself
+	terminating.  This makes the alarm() function pretty much
+	useless on Win32.  Go blame Microsoft. :-)
+
+#######################################################################
+* remote execution of ping (schedule for release 2.x.0)
+
+	(request by "Calvert, Neil" <ncalvert@GlobalNTS.com>)
+
+	option:
+		-r "[rsh:][user@]host[:ostype]"
+	e.g.:
+		-r "ssh:user@host:ostype"
+
+		- rsh or ssh to other host.
+		- other host has no perl. only ping,
+		- need to "override" ostype, as we do not run
+			on the same host (default: ostype of myself)
+		- ostype: default: ostype(myself)
+		- rsh: default ssh
+		- user: default myself
+
+	${rsh}	${ruser}	${ping{osname}} ${redir_stderr}
+	rsh -n	-l ${user}
+	ssh -n
+	""	""		osname=Config	2>&1
+				or -option
+
+	- rsh to cisco router?  ostype = cisco|ios ??
+
+#######################################################################
+* take a close look at alternatives, maybe integrated them, or at least
+	start a list of references, pointing to other useful tools:
+
+* pointed out by: Alexandros C. Couloumbis <alex@tee.gr>
+	http://www.kyuzz.org/antirez/hping/
+	ftp://ftp.internatif.org/pub/unix/echoping/
+	http://www-iepm.slac.stanford.edu/tools/synack/
+
+* check out Cisco IOS RTR (Response Time Reporter) for delay measurement:
+	http://www.cisco.com/univercd/cc/td/doc/product/software/ios120/12cgcr/fun_c/fcprt3/fcmonitr.htm
+	probably now called part of the SA Agent now.
+	Network Monitoring Using Cisco Service Assurance Agent
+http://www.cisco.com/univercd/cc/td/doc/product/software/ios121/121cgcr/fun_c/fcprt3/fcd301d.htm
+ 
+Overview of IPM
+http://www.cisco.com/univercd/cc/td/doc/product/rtrmgmt/ipmcw2k/ipm20/ipmug20/ipmover.htm#xtocid165050
+
+	(reported by "Matt Katona" <mkatona@comwavz.com>
+* check out rping
+	http://www.marmoset.net/~knail1/scripts/rping/rping.html
+	pointed out by Victor.Maldonado@intesa.com.co
+
+#######################################################################
+* Better NT support, options to look into:
+	- use better ping.exe (e.g. Win98 version) that summarizes
+	- use own external standard ping program/ping.exe
+	- write perl script that read standard Windows NT ping output
+		and creates a summary similar to Win98
+	- use perl based ping
+		(see Ian Baker <ian@sonic.net> and
+		Raymond Lucas <LUCASR@health.qld.gov.au>)
+	- calculate min/max/avg/loss values from standard system ping
+		(see "Edward Paijmans" <paijmans@telebyte.nl>)
+
+#######################################################################
+* Internal/External Ping/ICMP vs NTP delay
+	- add discussion about icmp echo vs ntp delay
+	- discuss why we don't use a perl ping.... (need root for icmp)
+	- icmp only by root ?! (no problem on windows?)
+	- if non-root -> only echo, which could be switched off.
+	- require fping? or ping from .nl?
+	- provide option to provide ping string including pipe?
+
+#######################################################################
+* Better support for running in foreign locales:
+	can we set the locale to force english output?
+
+#######################################################################
+From mrtg-request@list.ee.ethz.ch  Mon Jun 29 12:58:37 1998
+Return-Path: <mrtg-request@list.ee.ethz.ch>
+Resent-Date: Mon, 29 Jun 1998 21:38:59 +0200 (MET DST)
+Old-Return-Path: <mattp@Internex.NET>
+From: Matthew Petach <mattp@internex.net>
+Message-Id: <199806291936.MAA17855@b5.eng.internex.net>
+Subject: Re: [MRTG] Ping probe sync Interfaces or async intefaces ? what about loopback ?
+To: jeremy@iway.fr
+Date: Mon, 29 Jun 1998 12:36:43 -0700 (PDT)
+Cc: mrtg@list.ee.ethz.ch
+In-Reply-To: <3597CC4D.B049CE3A@iway.fr> from "Jérémy Lacroix" at Jun 29, 98 06:18:05 pm
+Resent-Message-ID: <"M_rbCB.A.KEF.U0-l1"@tardis>
+Resent-From: mrtg@list.ee.ethz.ch
+X-Mailing-List: <mrtg@list.ee.ethz.ch> archive/latest/3995
+Resent-Sender: mrtg-request@list.ee.ethz.ch
+
+Recently, J=E9r=E9my Lacroix talked about "[MRTG] Ping probe sync Interfa=
+ces or async intefaces ? what about loopback ?", and said
+>
+> Hello,
+> I'm working on latency time on our backbone. We're using ping probe on
+> our ciscos to visualize the latency times.
+
+
+*sigh*
+
+I've really tried to keep my mouth shut about this for a long time.
+
+using PING as a measurement of network latency is a stupid idea.  ICMP
+echo requests are generally the first things to be ignored/discarded by
+the routing devices, and the granularity level they provide is minimal
+at best.
+
+if you want to get more accurate, more reasonable numbers for network
+latency, rather than simply "how loaded is the router at the other end"
+(based on how quickly it decides to answer the echo request, if at
+all), use NTP.  Enable NTP service on your routers, apply an access
+list to keep other people from abusing it, have each of your routers
+NTP peer with each other, and then a simple
+
+./ntpq -n -c lopeers XX.YY.ZZ.AA | awk '{print $1"\t" $8}' | sed 's/[-+*]//g'
+
+(use the IP address of the router you're querying) will print out the
+IP address and delay down to the 10-microsecond level from that router
+to every other NTP-peering router, like this:
+
+207.88.0.74     83.56
+15.255.160.64   50.13
+198.93.3.1      6.12
+204.123.2.5     6.84
+128.115.14.97   12.59
+192.5.5.245     0.00
+205.158.2.246   2.66
+192.5.5.242     0.00
+205.158.2.251   83.42
+207.88.0.98     52.20
+205.158.0.7     2.61
+207.88.182.2    9.37
+
+Simply muliply the second column by 1000, and you have your *accurate*
+delay time between routers in microseconds, with a + or - 10
+microsecond variance.
+
+AND, NTP queries aren't discarded by the routers, nor are they treated
+as a low priority request, so you don't have to worry about getting
+poor numbers simply because the device at the other end is heavily
+loaded.
+
+
+I'm sorry to rant like this, I just get so upset when I see people
+trying to use ICMP messages for measuring network latency.  :(  :(  :(
+
+Matt Petach
+
+> However, the cisco are discarding ICMP packet on serial (synchron)
+> interfaces when there is an overload, which means errors in graphs......
+>
+> I'm currently solving the problem in pinging the sync interface (eth) of
+> cisco, but i was wondering how we could trust the result of ping-probe
+> on a loopback interface ?
+>
+> Does-it discarding ICMP packet ? if yes it mean cisco CP Booard is
+> emulating the discarding of ICMP (loopback could be setup without card
+> in cisco), and in that case what is the algorythm ?
+>
+> --
+> J=E9r=E9my Lacroix, Resp. Exploitation R=E9seau UUNET France
+> ---> mailto:jlacroix@iway.fr  ---> http://www.iway.fr
+> UUNET France, 215 Av. Clemenceau 92000 Nanterre
+> Tel : (33)-01-56-38-22-00 / Fax : (33)-01-56-38-22-01
+
+--
+Concentric Network              |           Matthew Petach {MP59}
+Senior Network Architect        |           mpetach@internex.net
+2306 Walsh Avenue               |           Tel: (408) 327-2411
+Santa Clara, CA  95051          |           Fax: (408) 496-5484
+
+
+
+From mattp@internex.net  Mon Jul 20 12:45:40 1998
+Return-Path: <mattp@internex.net>
+X-Envelope-Sender-Is: mattp@Internex.NET (at relayer david.siemens.de)
+From: Matthew Petach <mattp@internex.net>
+Message-Id: <199807201937.MAA11118@b5.eng.internex.net>
+Subject: [PWO] Re: [MRTG] Ping probe sync Interfaces or async intefaces ? what about loopback ?
+To: pwo@mc.HL.Siemens.DE (Peter W. Osel)
+Date: Mon, 20 Jul 1998 12:37:45 -0700 (PDT)
+Cc: mattp@internex.net, jeremy@iway.fr
+In-Reply-To: <19980719221513.14011@mc.HL.Siemens.DE> from "Peter W. Osel" at Jul 19, 98 10:15:13 pm
+
+Recently, Peter W. Osel talked about "Re: [MRTG] Ping probe sync Interfac=
+es or async intefaces ? what about loopback ?", and said
+>
+> Matt,
+>
+> thanx for your comments;  If you don't mind, I would like to include
+> them in the README file of the mrtg-ping-probe in one form or another,
+> if this is ok with you (may I include a reference to your name/Email
+> address?).
+
+Sure!  Actually, you should probably use mpetach@concentric.com, since
+we've now been bought by Concentric.  :)
+
+Matt_P
+
+--
+Concentric Network              |           Matthew Petach {MP59}
+Senior Network Architect        |           mpetach@concentric.com
+2306 Walsh Avenue               |           Tel: (408) 327-2411
+Santa Clara, CA  95051          |           Fax: (408) 496-5484
+
+
+
+
+
+########################################################################
+
+From avdlaan@att.nl  Tue May 26 04:38:48 1998
+From: avdlaan@att.nl
+Message-ID: <356AA90F.52E8@att.nl>
+Date: Tue, 26 May 1998 13:35:43 +0200
+Original-From: Arjan van der Laan <avdlaan@att.nl>
+Organization: AT&T
+To: pwo@SMI.Siemens.COM, RGoodrich@aviant.com
+Subject: [PWO] mrtg-ping-probe for Windows NT4.0
+
+Hi,
+
+I use Windows NT 4.0 and wanted to use use your ping-probe program but
+found out as I could see in the mail history NT4.0 ping program has no
+summary line. I tweaked your perl script slightly to produce the summary
+from the script. As I am not a die hard perl programmer I consider my
+lines as 'quick and dirty'. But they work ! Perhaps they are of use to
+you.
+
+Thanks for supporting MRTG and Best Regards,
+Arjan van der Laan.
+
+PS I do not know what effect this new script has on the NT5.0 ping
+program..... If you can tell me how to get that program I can test it.
+
+
+*** mrtg-ping-probe	Fri Jan  1 18:58:48 1999
+--- x	Fri Jan  1 18:58:39 1999
+***************
+*** 1,7 ****
+  #!/usr/local/bin/perl
+  ##################################################################
+  # $Id: mrtg-ping-probe,v 1.15 1998/05/14 00:04:02 pwo Exp $
+! # mrtg-ping-probe release $Name:  $
+  #
+  # Copyright (c) 1997,1998 by Peter W. Osel <pwo@pwo.de>, Cupertino.
+  # All Rights Reserved.
+--- 1,7 ----
+  #!/usr/local/bin/perl
+  ##################################################################
+  # $Id: mrtg-ping-probe,v 1.15 1998/05/14 00:04:02 pwo Exp $
+! # mrtg-ping-probe release $Name: Release_1_8_1 $
+  #
+  # Copyright (c) 1997,1998 by Peter W. Osel <pwo@pwo.de>, Cupertino.
+  # All Rights Reserved.
+***************
+*** 25,30 ****
+--- 25,31 ----
+  $Prog_vers = q$Revision: 1.15 $;
+  $Prog_id = q$Id: mrtg-ping-probe,v 1.15 1998/05/14 00:04:02 pwo Exp $;
+  $Usage = "Usage: $Prog_name [-hvV] [-k count] [-l length] host\n";
++ $pns = 0; #for windows ping without summary
+
+  # Parse Command Line:
+  die $Usage unless getopts('hk:l:vV');
+***************
+*** 138,144 ****
+ 		elsif (m|^\s+Minimum\s+=\s+(\d+)(?:\.\d+)?ms,\s+Maximum\s+=\s+(\d+)(?:\.\d+)?ms,\s+Average\s+=\s+(\d+)(?:\.\d+)?ms|) {
+ 			close(PING), return($1,$3,$2);
+ 			}
+!		}
+
+ 	print STDERR "${Prog_name}: ERROR: Could not find ping summary for $host\n";
+ 	print STDERR "${Prog_name}: INFO: The output of the ping command $ping{$Config{'osname'}} was:\n";
+--- 139,156 ----
+ 		elsif (m|^\s+Minimum\s+=\s+(\d+)(?:\.\d+)?ms,\s+Maximum\s+=\s+(\d+)(?:\.\d+)?ms,\s+Average\s+=\s+(\d+)(?:\.\d+)?ms|) {
+ 			close(PING), return($1,$3,$2);
+ 			}
+!
+! #fix by avdlaan for Windows NT4.0
+!		elsif (m/^Reply\s+from\s+$host:\s+bytes=$length\s+time=(\d+)(?:\.\d+)?ms\s+TTL/) {
+!			$pns=1, $ping_count++;
+!			$avg=int(($1 + $total) / $ping_count), $total=$total + $1;
+!			if ($ping_count==1) {$min = $1, $max = $1;}
+!			elsif ($1 <= $min) {$min = $1;}
+!			elsif ($1 >= $max) {$max = $1;}
+!			}
+!		}
+!	if ($pns=1) {close(PING), return($min,$avg,$max)};
+! #end of fix
+
+ 	print STDERR "${Prog_name}: ERROR: Could not find ping summary for $host\n";
+ 	print STDERR "${Prog_name}: INFO: The output of the ping command $ping{$Config{'osname'}} was:\n";
+
+
+
+From paijmans@telebyte.nl  Wed Oct 21 09:05:39 1998
+Return-Path: <paijmans@telebyte.nl>
+Message-Id: <199810211604.SAA04385@degas.telebyte.nl>
+From: "Edward Paijmans" <paijmans@telebyte.nl>
+To: <pwo@pwo.de>
+Subject: [PWO] mrtg-ping-probe adaption.
+Date: Wed, 21 Oct 1998 16:06:54 +0100
+Peter,
+
+Sitting behind an NT4.0 PC and impressed by the mrtg tool I thought it
+would be useful for me if the mrtg-ping-probe would work on NT4.0.  I
+changed the code of the mrtg-ping-probe a bit to include rudimentary
+NT4.0 (and W95) support. The only changes I made is one section
+(clearly marked with comment blocks) in the mrtg-ping-probe code. This
+new code calculates an average and determines the minimum and maximum
+round trip delay times from the samples returned. If none of the
+samples return a valid time than the maximum and minimum is set to 3000
+(indicating the system to be unavailable). One disadvantage of this new
+code is that for operating systems identified with 'MSWin32' a command
+error does no longer deliver output to the STDERR showing what went
+wrong.
+
+I just thought that if it is useful for me other people might be
+interested too. If you want to include this into your mrtg-ping-probe
+distribution, feel free to do so.
+
+Regards,
+Edward Paijmans
+
+*** mrtg-ping-probe	Fri Jan  1 19:01:45 1999
+--- mrtg-ping-probe-new	Fri Jan  1 19:01:34 1999
+***************
+*** 1,7 ****
+  #!/usr/local/bin/perl
+  ##################################################################
+  # $Id: mrtg-ping-probe,v 1.16 1998/05/22 06:58:22 pwo Exp $
+! # mrtg-ping-probe release $Name:  $
+  #
+  # Copyright (c) 1997,1998 by Peter W. Osel <pwo@pwo.de>, Cupertino.
+  # All Rights Reserved.
+--- 1,7 ----
+  #!/usr/local/bin/perl
+  ##################################################################
+  # $Id: mrtg-ping-probe,v 1.16 1998/05/22 06:58:22 pwo Exp $
+! # mrtg-ping-probe release $Name: Release_1_8_2 $
+  #
+  # Copyright (c) 1997,1998 by Peter W. Osel <pwo@pwo.de>, Cupertino.
+  # All Rights Reserved.
+***************
+*** 40,50 ****
+
+  # Check Sanity of Arguments
+  unless ($PacketCount =~ /^\d+$/) {
+!	print STDERR "$Prog_name: FATAL: option -k requires numeric argument.\n";
+ 	++$err;
+  	}
+  unless ($PacketLength =~ /^\d+$/) {
+! 	print STDERR "$Prog_name: FATAL: option -l requires numeric argument.\n";
+  	++$err;
+  	}
+
+--- 40,52 ----
+
+  # Check Sanity of Arguments
+  unless ($PacketCount =~ /^\d+$/) {
+! 	print STDERR "$Prog_name: FATAL: option -k requires numeric
+! argument.\n";
+  	++$err;
+  	}
+  unless ($PacketLength =~ /^\d+$/) {
+! 	print STDERR "$Prog_name: FATAL: option -l requires numeric
+! argument.\n";
+  	++$err;
+  	}
+
+***************
+*** 83,89 ****
+  # Still looking for a perl internal ping function that reports
+  # round trip time.
+
+! ($pt_min, $pt_avg, $pt_max) = ping($HostToPing, $PacketLength, $PacketCount);
+
+  # The external mrtg probe returns up to 4 lines of output:
+  #	1. Line: current state of the 'incoming bytes counter'
+--- 85,92 ----
+  # Still looking for a perl internal ping function that reports
+  # round trip time.
+
+! ($pt_min, $pt_avg, $pt_max) = ping($HostToPing, $PacketLength,
+! $PacketCount);
+
+  # The external mrtg probe returns up to 4 lines of output:
+  #	1. Line: current state of the 'incoming bytes counter'
+***************
+*** 122,148 ****
+  		);
+
+  	unless (defined($ping{$Config{'osname'}})) {
+! 		print STDERR "${Prog_name}: FATAL: Not yet configured for $Config{'osname'}\n";
+  		exit(1);
+  		}
+
+  	unless (open(PING, "$ping{$Config{'osname'}} 2>&1 |")) {
+! 		print STDERR "${Prog_name}: FATAL: Can't open $ping{$Config{'osname'}}: $!";
+  		exit(1);
+  		}
+
+  	while (<PING>) {
+  		$ping_output .= $_;
+! 		if (m|^round-trip(?: \(ms\) )? min/avg/max(?:/stddev)? = (\d+)(?:\.\d+)?/(\d+)(?:\.\d+)?/(\d+)(?:\.\d+)?|) {
+  			close(PING), return($1,$2,$3);
+  			}
+! 		elsif (m|^\s+Minimum\s+=\s+(\d+)(?:\.\d+)?ms,\s+Maximum\s+=\s+(\d+)(?:\.\d+)?ms,\s+Average\s+=\s+(\d+)(?:\.\d+)?ms|) {
+  			close(PING), return($1,$3,$2);
+  			}
+  		}
+!
+! 	print STDERR "${Prog_name}: ERROR: Could not find ping summary for $host\n";
+! 	print STDERR "${Prog_name}: INFO: The output of the ping command $ping{$Config{'osname'}} was:\n";
+  	print STDERR "$ping_output\n";
+
+  	close(PING), return(0,0,0);
+--- 125,191 ----
+  		);
+
+  	unless (defined($ping{$Config{'osname'}})) {
+! 		print STDERR "${Prog_name}: FATAL: Not yet configured for $Config{'osname'}\n";
+  		exit(1);
+  		}
+
+  	unless (open(PING, "$ping{$Config{'osname'}} 2>&1 |")) {
+! 		print STDERR "${Prog_name}: FATAL: Can't open $ping{$Config{'osname'}}: $!";
+  		exit(1);
+  		}
+
+  	while (<PING>) {
+  		$ping_output .= $_;
+! 		if (m|^round-trip(?: \(ms\) )? min/avg/max(?:/stddev)? = (\d+)(?:\.\d+)?/(\d+)(?:\.\d+)?/(\d+)(?:\.\d+)?|) {
+  			close(PING), return($1,$2,$3);
+  			}
+! 		elsif (m|^\s+Minimum\s+=\s+(\d+)(?:\.\d+)?ms,\s+Maximum\s+=\s+(\d+)(?:\.\d+)?ms,\s+Average\s+=\s+(\d+)(?:\.\d+)?ms|) {
+  			close(PING), return($1,$3,$2);
+  			}
+  		}
+!
+!	############################################################################
+! 	# Added by E. Paijmans to support ping probe on NT4.0 (W95)
+! 	# NT4.0 does not support min, max, avg. These values have to be determined
+!	# from the lines returned.
+! 	# syntax of returned records:
+!	#	Reply from aa.bb.cc.dd: bytes=56 time=10ms TTL=255
+! 	# or in case of a timeout:
+!	#	Request timed out.
+!
+! 	if ($Config{'osname'} =~ "MSWin32") {
+! 		$min = 3000; # 3 seconds is taken as max round trip delay, default NT4.0 times out at 2 seconds.
+! 		@ping_result = split(/\n/,$ping_output);
+! 			foreach (@ping_result){
+! 			if (/\stime\W(\d+)/) {
+! 				if ($1 < $min) { $min = $1 }
+! 				if ($1 > $max) { $max = $1 }
+! 				$tot += $1;
+! 				$num ++;
+! 			}
+! 			elsif (/timed out/) { $unreach = 3000 }
+! 		}
+! 		if ($unreach == 3000 && $num == 0) { $max = 3000 }
+! 		unless ($num == 0) {$avg = int($tot / $num)}
+! 		close(PING), return($min,$avg,$max);
+! 		}
+! 	# End of section added for NT4.0
+!	############################################################################
+!
+! 	print STDERR "${Prog_name}: ERROR: Could not find ping summary for $host\n";
+! 	print STDERR "${Prog_name}: INFO: The output of the ping command $ping{$Config{'osname'}} was:\n";
+  	print STDERR "$ping_output\n";
+
+  	close(PING), return(0,0,0);

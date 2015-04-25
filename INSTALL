@@ -1,0 +1,164 @@
+
+mrtg-ping-probe - A Round Trip Time and Packet Loss Probe
+
+			for
+
+	MRTG - The Multi Router Traffic Grapher.
+
+
+Copyright (c) 1997-2003 Peter W. Osel <pwo@pwo.de>.
+All rights reserved.
+
+
+See the file COPYRIGHT in the distribution for the exact terms.
+
+Please read the file README first.
+
+Please make sure you have the latest release of mrtg-ping-probe.
+Read the file README to find out where to get the latest release.
+
+
+Make sure you have the following software installed on your system:
+
+- perl <http://www.perl.com/pub/language/info/software.html>
+	I use version 5.003, but any later version will most likely
+	work without any problem.
+
+- MRTG	<http://ee-staff.ethz.ch/~oetiker/webtools/mrtg/mrtg.html>
+	I use version 2.8.8, but any 2.x version will most likely work
+	without any problem.
+
+- a ping program
+	You need a ping program that displays a summary of the round
+	trip times upon termination or timeout.  mrtg-ping-probe knows
+	how to call the system's native ping program for supported
+	systems (see the file README for a list).  See below for
+	platform specific information and for information on adding
+	support for a new system.
+
+
+Check the script mrtg-ping-probe, and adapt the path to your perl if
+necessary.  Put the script into a place where MRTG can call it, e.g.
+the your MRTG binary directory.
+
+Edit your mrtg.cfg file to add statements for the devices you want to
+ping.  See mrtg.cfg-ping for an example.  You might also use and
+customize the contributed script mrtg-ping-cfg to generate entries
+suitable for your environment.
+
+Optionally create the documentation in the format you like best, e.g.
+	make html
+	make man
+	make tex
+
+
+Platform specific notes:
+
+
+* OS/2
+
+- mrtg-ping-probe has been tested on OS/2 Warp4 with Perl 5.002
+- mrtg-ping-probe "requires" perl 5.003 or better, you might need
+	to change the line "require 5.003;" to "require 5.002;"
+- the Target line in your mrtg.cfg needs to include perl5:
+	Target[pwo.de.ping]: `perl5 mrtg-ping-probe pwo.de`
+- depending on where you placed files, you might need to list
+	the absolute pathname for mrtg-ping-probe.
+- test mrtg-ping-probe with the commands
+	perl5 mrtg-ping-probe -V
+	perl5 mrtg-ping-probe pwo.de
+
+
+* Solaris 2 and possibly others
+
+- some ping programs try to map IP addresses to hostnames.  A ping
+	can fail, if your DNS cannot resolve the address.  If you use
+	IP addresses in mrtg.cfg and want to suppress IP address to
+	hostname mapping, pass the appropriate ping option, using the
+	new -o option.  E.g. on Solaris your Target[] declaration to
+	ping the device at address 10.1.2.3 would look like this:
+
+	Target[10.1.2.3]: `/usr/local/sbin/mrtg-ping-probe -o -n 10.1.2.3`
+
+
+* Windows 95/98/NT 4.0/2000
+
+- the native ping program on Windows 95 and Windows NT 4.0 do not
+	display a summary of the round trip times upon termination or
+	timeout.  You need to install a ping program that displays the
+	summary information, e.g. the ping program of Windows 98 or
+	Windows 2000.  You can also use WinSock 2.x (see:
+	http://www.sockets.com/).
+- the Target line in your mrtg.cfg might need to include the complete
+	pathname to your perl executable and to the mrtg-ping-probe
+	script:
+	Target[pwo.de.ping]: `c:\perl5\perl c:\mrtg-2.5.2\mrtg-ping-probe pwo.de`
+- make sure that the quotes in the Target line are "back-quotes" (aka
+	accent-grave, back-ticks, or as one Windows user once described
+	it:  "The ` is the one next to the 1 key and NOT the single
+	quote below the double quote key." ;-)
+
+
+* some Linux, and possibly other platforms.
+
+- some ping programs won't stop until they received the configured
+	number of ECHO_RESPONSE packets.  If your target is unreachable,
+	these ping will just keep sending ECHO_RESPONSE packets, and
+	mrtg-ping-probe might seem to hang.  In this case use the
+	timeout option (-t timeout) to abort the ping after a reasonable
+	time.
+
+	You should configure a timeout, if the manual page of your ping
+	mentions the phrase "(and receiving)" for the count option:
+
+	-c count
+	Stop after sending (and receiving) count ECHO_RESPONSE packets.
+
+
+* FreeBSD
+
+- on freebsd > 3.x 'ping -s' is only allowed to be used by root.  We no
+	longer pass the packet size option to ping on freebsd, unless
+	we run as root (which we shouldn't).
+
+
+* Adding support for a new platform:
+
+- make sure you have the latest release of mrtg-ping-probe (See the
+	file README where to find it)
+- make sure that the native ping program displays a summary of the
+	round trip times upon termination or get and install a version
+	that does so, e.g. ftp://ftp.nikhef.nl/pub/network/ping.tar.Z.
+- determine perl's idea about your platform name:
+	perl -e 'use Config; print $Config{"osname"}, "\n"'
+- add a line to the %ping associative array for your platform, e.g.:
+	'linux' =>	"/bin/ping -c $count -s $length $host",
+	where 'linux' is the output of the above perl command,
+	/bin/ping the absolute pathname of your ping program,
+	also check the documentation to adapt the arguments to ping.
+- test whether mrtg-ping-probe can find the summary information of your ping:
+	mrtg-ping-probe some.host.name
+	if you get the error message
+		"ERROR: Could not find ping summary for some.host.name"
+	you have to adapt the regular expression that matches the ping output
+	in function ping().
+- send context diffs of your changes to me, Peter W. Osel <pwo@pwo.de>,
+	so we can keep this distribution in sync.
+	Also send the following information:
+
+	output of the command "uname -a"
+
+	output of the command "man ping"
+
+	output of the ping command when pinging some hosts ten times, e.g.
+		ping some.host.name 56 10
+		ping -c 10 some.host.name
+	(The actual command arguments may be different)
+
+	complete pathname of the native ping program, or if you use a
+	non-native ping program, information on which ping you use.
+
+
+
+@(#) $Id: INSTALL,v 2.3 2003/09/13 18:04:29 pwo Exp $
+@(#) mrtg-ping-probe release $Name: Release_2_2_0 $

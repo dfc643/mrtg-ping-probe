@@ -1,0 +1,107 @@
+##################################################################
+# Multi Router Traffic Grapher -- Example Configuration File
+#	to integrate mrtg-ping-probe - A Round Trip Time Probe
+##################################################################
+# @(#) $Id: mrtg.cfg-ping,v 2.3 2003/09/13 18:04:29 pwo Exp $
+# @(#) mrtg-ping-probe release $Name: Release_2_2_0 $
+#
+# Copyright (c) 1997-2003 Peter W. Osel <pwo@pwo.de>.
+# All rights reserved.
+#
+##################################################################
+# This file is for use with mrtg-2.0
+#
+# Note:
+#
+# * Keywords must start at the begin of a line.
+#
+# * Lines which follow a keyword line which do start 
+#   with a blank are appended to the keyword line
+#
+# * Empty Lines are ignored
+#
+# * Lines starting with a # sign are comments.
+#
+##################################################################
+
+##################################################################
+# Sample entry to monitor round trip time to the host rubycon
+##################################################################
+
+Title[rubycon.ping]: Round Trip Time Analysis
+	for 256k FrameRelay link between Cupertino and Munich
+PageTop[rubycon.ping]: <H1>Round Trip Time Analysis for CUP/MUC link</H1>
+	<P>Actually we are measuring the ping time between our web
+	server and rubycon.  Both are lightly loaded Sun workstations.
+
+##################################################################
+# We set MaxBytes to the time in ms that we consider "normal" for
+# an unused link, so that the per-cent values show how much you
+# are off when the line is used more heavily.  you also have to
+# set AbsMax, otherwise values greate than MaxBytes would be
+# ignored.
+# You might want to include Peaks or not.
+
+MaxBytes[rubycon.ping]: 180
+AbsMax[rubycon.ping]: 10000
+WithPeak[rubycon.ping]: ymwd
+
+##################################################################
+# Set gauge, to treat the values gathered from target as absolute
+#	and not as counters.
+Options[rubycon.ping]: gauge
+
+##################################################################
+# Call the ping-probe.  You can include arguments to increase
+#	the packet count or size.
+#	Some ping programs try to map IP addresses to hostnames
+#	(e.g. Solaris 2);  a DNS failure will cause the ping to
+#	fail, so you might want to suppress address to hostname
+#	mapping by passing an option to the pring program.  On
+#	Solaris, the option is `-n', so you would add `-o -n' as
+#	shown in the second line.
+#	The third line also sets a timeout.  You want this if your
+#	ping insist on receiving (not only sending) the given
+#	number of pings.
+Target[rubycon.ping]: `/home/wwwadm/mrtg/probe/mrtg-ping-probe rubycon`
+#Target[rubycon.ping]: `/home/wwwadm/mrtg/probe/mrtg-ping-probe -o -n rubycon`
+#Target[rubycon.ping]: `/home/wwwadm/mrtg/probe/mrtg-ping-probe -t 42 -o -n rubycon`
+# for Windows you might have to specify all pathnames explicitely:
+#Target[rubycon.ping]: `c:\Perl\perl.exe c:\mrtg\probe\mrtg-ping-probe rubycon`
+
+##################################################################
+# We have to change all labels of the graph.
+#
+YLegend[rubycon.ping]: round trip time 
+ShortLegend[rubycon.ping]: ms
+Legend1[rubycon.ping]: Maximum Round Trip Time in ms
+Legend2[rubycon.ping]: Minimum Round Trip Time in ms
+Legend3[rubycon.ping]: Maximal 5 Minute Maximum Round Trip Time in ms
+Legend4[rubycon.ping]: Maximal 5 Minute Minimum Round Trip Time in ms
+LegendI[rubycon.ping]: &nbsp;Max:
+LegendO[rubycon.ping]: &nbsp;Min:
+
+
+
+##################################################################
+# Sample entry to monitor packet loss
+Target[rubycon.loss]: `/home/wwwadm/mrtg/probe/mrtg-ping-probe -t 42 -p loss/loss rubycon`
+# for Windows you might have to specify all pathnames explicitely:
+#Target[rubycon.loss]: `c:\Perl\perl.exe c:\mrtg\probe\mrtg-ping-probe -t 42 -p loss/loss rubycon`
+Title[rubycon.loss]: Packet Loss Analysis
+PageTop[rubycon.loss]: <H1>Packet Loss Analysis</H1>
+MaxBytes[rubycon.loss]: 100
+AbsMax[rubycon.loss]: 101
+WithPeak[rubycon.loss]: ymwd
+Options[rubycon.loss]: gauge
+Unscaled[rubycon.loss]: dwmy
+YLegend[rubycon.loss]: % Packet Loss
+ShortLegend[rubycon.loss]: %
+Legend1[rubycon.loss]: % Packet Loss
+Legend2[rubycon.loss]: % Packet Loss
+Legend3[rubycon.loss]: Maximal 5 Minute % Packet Loss
+Legend4[rubycon.loss]: Maximal 5 Minute % Packet Loss
+LegendI[rubycon.loss]: &nbsp;% loss:
+LegendO[rubycon.loss]: &nbsp;% loss:
+
+#EOF

@@ -1,0 +1,134 @@
+*****
+* Original: http://fossies.org/linux/mrtg-ping-probe/
+*****
+* Modified: Added Simplified Chinese Support
+*****
+
+
+
+
+
+
+mrtg-ping-probe - A Round Trip Time and Packet Loss Probe
+
+			for
+
+	MRTG - The Multi Router Traffic Grapher.
+
+
+Copyright (c) 1997-2003 Peter W. Osel <pwo@pwo.de>.
+All rights reserved.
+
+
+See the file COPYRIGHT in the distribution for the exact terms.
+
+See the file INSTALL for installation instructions.
+
+
+mrtg-ping-probe is a ping probe for MRTG 2.x.  It is used to monitor
+the round trip time and packet loss to networked devices.  MRTG uses
+its output to generate graphs visualizing minimum and maximum round
+trip times or packet loss.
+
+The latest release of mrtg-ping-probe can always be found on the web at
+	http://pwo.de/projects/mrtg/
+or via anonymous ftp at
+	ftp://ftp.pwo.de/pub/pwo/mrtg/mrtg-ping-probe/
+
+mrtg-ping-probe depends on the following software being installed on
+your system: perl (at least version 5.003), mrtg (I use version 2.8.8,
+though any mrtg 2.x version should work), and a ping program that
+displays a summary of the round trip times upon termination or
+timeout.
+
+mrtg-ping-probe runs on AIX, BSD/OS 2.1, FreeBSD/2.2.x, IRIX/6.2,
+Linux, Mac OS X (Darwin 5.4), NetBSD, OpenBSD, OS/2, OSF1 V3.2, Solaris
+1.1.2 (SunOS 4.1.4), Solaris 2.5.1 (SunOS 5.5.1), Solaris 7 (SunOS
+5.7), Solaris 8 (SunOS 5.8), Solaris 9 (SunOS 5.9), HP-UX 9, Windows
+98, and Windows 2000 (english, french, portugesee, and spanish
+locales).
+
+If you install the Windows ping program that comes with Windows 98,
+Windows 2000, or WinSock 2.x, mrtg-ping-probe will also run on Windows
+95 and Windows 4.0.
+
+Support for additional systems is usually easy to add, as described in
+the file INSTALL.
+
+Act responsible: do not use mrtg-ping-probe to ping devices without the
+owner's permission.  Just imagine 10,000 people would decide to ping
+your hosts ...  mrtg-ping-probe is meant to be used within your network
+to get round trip time performance figures for your network.
+
+
+Please check out Tobias Oetiker's smokeping ("the mrtg for latency") at
+	http://people.ee.ethz.ch/~oetiker/webtools/smokeping/
+SmokePing measures latency, latency distribution and packet loss in
+your network. It uses RRDtool to maintain the longterm datastore and to
+draws pretty graphs.
+
+
+IMPORTANT!  Communicate any problem and suggested patches to me, Peter
+W. Osel <pwo@pwo.de>, so we can keep this distribution in sync.  If
+you have a problem, there will be someone else who had it or will have
+it too...
+
+If possible, send me patches such that the patch program will apply
+them.  Context diffs are the best, then normal diffs.  Do not send ed
+scripts, I have probably changed my copy since the version you got.
+
+
+I have to thank the following people
+
+Tobias Oetiker <oetiker@ee.ethz.ch> and Dave Rand <dlr@bungi.com> for
+writing MRTG in the first place.
+
+Wee-Meng LEE <leewm@sgp.hp.com> for porting mrtg-ping-probe to HPUX 9.x
+and writing cfgpingmaker, which I renamed to mrtg-ping-cfg and plan to
+rewrite it in perl as soon as I find the time (tm;-)
+
+Simon Amor <simon@foobar.co.uk> for his perl script.  It was a big help
+and motivation to get mrtg-ping-probe started.
+
+Fabrizio Pivari <Fabrizio.Pivari@agip.it> for adding AIX support.
+
+Mick Ghazey <mick@lowdown.com> for triggering the port to Linux.
+
+Dobrica Pavlinusic <dpavlin@foi.hr> for adding OSF1 support.
+
+Ray Goodrich <RGoodrich@aviant.com> for adding support for Windows.
+
+Pavel Juran <juran@proca.cz> for valuable insights into the Windows
+world and information on WinSock 2.x for Windows 95/98.
+
+voytek@sbt.net.au for helping on the OS/2 port.
+
+Ola Eriksson <ola@udd.net> for adding NetBSD support.
+
+Xander Soldaat <xander@soldaat.com> for adding OpenBSD support.
+
+Scott Shipley <SShipley@innovexinc.com> for adding RedHat 7 support.
+
+Jerome Moinet <jerome@moinet.org> and Nicolas
+<ndsoftware@ndsoftware.net> for helping to support the french Windows
+locale, Luis Rafael <lrafael@ipg.pt> for helping with the portugesee
+locale, and Luis Carrizo <luis-carrizo@ajvierci.com.py> for helping
+with the spanish locale.
+
+Peter "Pete" Chen <petechen@on2.com> for his timeout contribution.
+
+Fred Inklaar <fred@airplant.net> for adding support for Mac OS X
+(Darwin 5.4).
+
+Thomas Sailer <sailer@gamecube.hb9jnx.ampr.org>, Ulf Viney
+<uviney@blueairnetworks.com>, Enrique Iglesias Rodriguez
+<enrique@intelideas.net>, Martin <anonymous@sol.dk>, and
+<winniethepooh@libertysurf.fr> for helping to support RedHat Linux 7.3
+(and possibly other new Linux distributions using new ping versions).
+
+Willem Jan Withagen <wwithagen@vianetworks.nl> for pointing out that
+freebsd 3.x and later no longer allows non-root user to use ping -s.
+
+
+@(#) $Id: README,v 2.3 2003/09/13 18:04:29 pwo Exp $
+@(#) mrtg-ping-probe release $Name: Release_2_2_0 $

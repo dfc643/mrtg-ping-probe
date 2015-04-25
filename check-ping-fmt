@@ -1,0 +1,654 @@
+#!/usr/local/bin/perl -w
+##################################################################
+# $Id$
+# mrtg-ping-probe release $Name:  $
+#
+# Copyright (c) 1997-2001 Peter W. Osel <pwo@pwo.de>.
+# All Rights Reserved.
+#
+# See the file COPYRIGHT in the distribution for the exact terms.
+#
+##################################################################
+# testfile to test regular expression matching
+# do we catch all different formats?
+# ToDo: automatically verify correct extraction.
+##################################################################
+
+while (<DATA>) {
+	s/^\s*#.*$//;		# Strip comment
+	next if /^\s*$/;	# Skip empty lines
+
+	print if (m@^Platform: @);
+
+	if (m@(?:round-trip|rtt)(?:\s+\(ms\))?\s+min/avg/max(?:/(?:m|std)-?dev)?\s+=\s+(\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)/(\d+(?:\.\d+)?)@m) {
+		print "\tU0: min: $1, avg: $2, max: $3\n"
+		}
+	elsif (m@^\s+\w+\s+=\s+(\d+(?:\.\d+)?)ms,\s+\w+\s+=\s+(\d+(?:\.\d+)?)ms,\s+\w+\s+=\s+(\d+(?:\.\d+)?)ms\s+@m) {
+		print "\tW0: min: $1, avg: $3, max: $2\n"
+		}
+	elsif (m@(\d+)% (?:packet )?loss(?:$|,)@m) {
+		print "\tU1: loss: $1\n";
+		}
+	elsif (m@\(perte\s+(\d+)%\),\s+$@m) {
+		print "\tW1: loss: $1\n";
+		}
+	elsif (m@\((\d+)%\s+(?:loss|perdidos|persi|de perda|Verlust)\),\s+$@m) {
+		print "\tW2: loss: $1\n";
+		}
+
+	}
+
+
+__DATA__
+
+##################################################################
+# SunOS ca02w042 5.5.1 Generic_103640-31 sun4u sparc SUNW,Ultra-60
+# /usr/sbin/ping host [timeout]
+# /usr/sbin/ping -s[drvRlLn] [-I interval] [-t ttl] [-i interface] host [data size] [npackets]
+Platform: SunOS 5.5.1
+
+ca02w042{pwo} ~ 42 > /usr/sbin/ping -s slowfox 56 10
+PING slowfox.muc.pwo.de: 56 data bytes
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=0. time=187. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=1. time=188. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=2. time=189. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=3. time=188. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=4. time=190. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=5. time=187. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=6. time=189. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=7. time=187. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=8. time=189. ms
+64 bytes from slowfox.muc.pwo.de (172.29.19.160): icmp_seq=9. time=188. ms
+
+----slowfox.muc.pwo.de PING Statistics----
+10 packets transmitted, 10 packets received, 0% packet loss
+round-trip (ms)  min/avg/max = 187/188/190
+
+
+
+ca02w042{pwo} ~ 518 > /usr/sbin/ping -s 172.29.19.161 56 10
+PING 172.29.19.161: 56 data bytes
+
+----172.29.19.161 PING Statistics----
+10 packets transmitted, 0 packets received, 100% packet loss
+
+
+
+##################################################################
+# SunOS gigant 4.1.4 4 sun4m
+# /usr/etc/ping host [timeout]
+# /usr/etc/ping -s[drvRl] host [data size] [npackets]
+Platform: SunOS 4.1.4
+
+gigant{pwo} ~ 504 > /usr/etc/ping -s ca02w042.ca02.pwo.de 56 10
+PING ca02w042.ca02.pwo.de 56 data bytes
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=0. time=188. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=1. time=187. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=2. time=188. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=3. time=187. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=4. time=187. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=5. time=187. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=6. time=187. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=7. time=188. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=8. time=187. ms
+64 bytes from ca02w042.ca02.pwo.de (219.8.68.106): icmp_seq=9. time=188. ms
+
+----ca02w042.ca02.pwo.de PING Statistics----
+10 packets transmitted, 10 packets received, 0% packet loss
+round-trip (ms)  min/avg/max = 187/187/188
+
+
+##################################################################
+# OpenBSD proxy 2.6 PLANET_X#5 i386
+# /sbin/ping
+# usage: ping [-DdfLnqRrv] [-c count] [-I ifaddr] [-i wait]
+#	[-l preload] [-p pattern] [-s packetsize] [-t ttl] [-w maxwait] host
+Platform: OpenBSD 2.6
+
+proxy > ping -c 10 number-2:
+PING number-2.localnet (192.168.2.101): 56 data bytes
+64 bytes from 192.168.2.101: icmp_seq=0 ttl=255 time=9.222 ms
+64 bytes from 192.168.2.101: icmp_seq=1 ttl=255 time=2.252 ms
+64 bytes from 192.168.2.101: icmp_seq=2 ttl=255 time=2.397 ms
+64 bytes from 192.168.2.101: icmp_seq=3 ttl=255 time=2.187 ms
+64 bytes from 192.168.2.101: icmp_seq=4 ttl=255 time=2.734 ms
+64 bytes from 192.168.2.101: icmp_seq=5 ttl=255 time=2.191 ms
+64 bytes from 192.168.2.101: icmp_seq=6 ttl=255 time=3.144 ms
+64 bytes from 192.168.2.101: icmp_seq=7 ttl=255 time=2.157 ms
+64 bytes from 192.168.2.101: icmp_seq=8 ttl=255 time=2.717 ms
+64 bytes from 192.168.2.101: icmp_seq=9 ttl=255 time=2.242 ms
+- --- number-2.localnet ping statistics ---
+10 packets transmitted, 10 packets received, 0% packet loss
+round-trip min/avg/max/std-dev = 2.157/3.124/9.222/2.056 ms
+
+
+
+##################################################################
+# HP-UX prisma A.09.03 A 9000/735 2003425300 two-user license
+# /etc/ping [-drvo] host [packet size] [npackets]
+Platform: HP-UX A.09.03
+
+round-trip (ms)  min/avg/max = 3/4/6
+
+
+##################################################################
+# AIX
+# /etc/ping
+Platform: AIX
+
+round-trip min/avg/max = 3/4/18 ms
+
+
+##################################################################
+# Linux bfs.smartturn.com 2.2.5-15 #1 Mon Apr 19 23:00:46 EDT 1999 i686 unknown
+Platform: Linux 2.2.5
+
+PING 192.168.192.230 (192.168.192.230) from 192.168.192.200 : 56 data bytes
+From bfs.smartturn.com (192.168.192.200): Destination Host Unreachable
+From bfs.smartturn.com (192.168.192.200): Destination Host Unreachable
+From bfs.smartturn.com (192.168.192.200): Destination Host Unreachable
+From bfs.smartturn.com (192.168.192.200): Destination Host Unreachable
+From bfs.smartturn.com (192.168.192.200): Destination Host Unreachable
+
+--- 192.168.192.230 ping statistics ---
+5 packets transmitted, 0 packets received, +5 errors, 100% packet loss
+
+
+##################################################################
+# Linux mcsolaar 2.2.14-15mdk #1 Tue Jan 4 22:24:20 CET 2000 i686 unknown
+# /bin/ping
+# usage: ping [-LRdfnqrv] [-c count] [-i wait] [-l preload]
+#	[-p pattern] [-s packetsize] [-t ttl] [-I interface address] host
+Platform: Linux 2.2.14
+
+[pwo@mcsolaar pwo]$ ping -s 56 -c 10 ricochet
+PING ricochet (172.31.16.193): 56 data bytes
+64 bytes from 172.31.16.193: icmp_seq=0 ttl=247 time=189.8 ms
+64 bytes from 172.31.16.193: icmp_seq=2 ttl=247 time=191.2 ms
+64 bytes from 172.31.16.193: icmp_seq=3 ttl=247 time=188.2 ms
+64 bytes from 172.31.16.193: icmp_seq=4 ttl=247 time=188.0 ms
+64 bytes from 172.31.16.193: icmp_seq=5 ttl=247 time=188.6 ms
+64 bytes from 172.31.16.193: icmp_seq=6 ttl=247 time=188.1 ms
+64 bytes from 172.31.16.193: icmp_seq=7 ttl=247 time=188.5 ms
+64 bytes from 172.31.16.193: icmp_seq=9 ttl=247 time=188.5 ms
+
+--- ricochet ping statistics ---
+10 packets transmitted, 8 packets received, 20% packet loss
+round-trip min/avg/max = 188.0/188.8/191.2 ms
+
+
+##################################################################
+# BSD/OS epiphore 2.1 BSDI BSD/OS 2.1
+# /bin/ping [-dfnqRrv] [-c count] [-i wait] [-l preload]
+#	[-p pattern] [-s packetsize] host
+Platform: BSD/OS 2.1
+
+round-trip min/avg/max = 10.25/50.253/100.256 ms
+
+
+##################################################################
+# FreeBSD host.domain 2.2.1-RELEASE FreeBSD 2.2.1-RELEASE #0: Friday May 2 21:27:07 LKT 1997     root@host.domain:/usr/src/sys/compile/SLT  i386
+# usage: ping [-LQRadfnqrv] [-c count] [-i wait] [-I interface]
+#	[-l preload] [-p pattern] [-s packetsize] [-T ttl] host
+
+round-trip min/avg/max = 3.216/5.898/26.582 ms
+
+
+##################################################################
+# FreeBSD 2.2.5-RELEASE
+# ping [-QRadfnqrv] [-c count] [-i wait] [-l preload] [-p pattern]
+#	[-s packetsize] [host | [-L] [-I interface] [-T ttl] mcast-group]
+Platform: FreeBSD 2.2.5-RELEASE
+
+round-trip min/avg/max/stddev = 3.194/3.561/4.116/0.356 ms
+
+
+##################################################################
+# FreeBSD 2.2.6-RELEASE
+# ping [-QRadfnqrv] [-c count] [-i wait] [-l preload] [-p pattern]
+#	[-s packetsize] [host | [-L] [-I interface] [-T ttl] mcast-group]
+Platform: FreeBSD 2.2.6-RELEASE
+
+round-trip min/avg/max/stddev = 11.528/30.384/56.625/13.284 ms
+
+
+##################################################################
+# SGI IRIX 6.2
+# /usr/etc/ping [-dfnqrvRL] [-c count] [-s size] [-l preload]
+#		[-i interval] [-p pattern] [-T ttl] [-I addr] host
+Platform: SGI IRIX 6.2
+
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 2/2/2 ms
+
+
+##################################################################
+# OSF1 barok V3.2 148 alpha
+# /sbin/ping [-Rdfnqrv] [-c count] [-i wait] [-l preload]
+#	[-p pattern] [-s packetsize] host
+Platform: OSF1 V3.2 148 alpha
+
+4 packets transmitted, 4 packets received, 0% packet loss
+round-trip (ms)  min/avg/max = 1/3/5 ms
+
+
+##################################################################
+# Windows 98 / NT 5.0 Betas.
+# osname='MSWin32'
+Platform: Windows 98 / NT 5.0 Betas
+
+Ping statistics for 129.132.1.15:
+    Packets: Sent = 10, Received = 10, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 217ms, Maximum =  248ms, Average =  227ms
+
+
+##################################################################
+# Windows 95 / Windows 98 with WinSock 2.x
+# osname='MSWin32'
+# Usage: ping [-t] [-a] [-n count] [-l size] [-f] [-i TTL] [-v TOS]
+#             [-r count] [-s count] [[-j host-list] | [-k host-list]]
+#             [-w timeout] destination-list
+Platform: Windows 95 / Windows 98 with WinSock 2.x
+
+   Minimum = 18ms, Maximum =  82ms, Average =  26ms
+
+
+##################################################################
+# OS/2
+# osname = os2
+#
+# Usage:   ping [-?drv] <host> [size [packets]]
+#
+# Where:
+# d       - Turn debug on.
+# r       - Bypass the normal routing tables.
+# v       - Verbose output. Include all ICMP packets received.
+# host    - Destination.
+# size    - The size of data portion of the packet.
+# packets - The number of Echo Request packets to send.
+Platform: OS/2
+
+ping www.AgiX.NET 10 10
+PING www.AgiX.NET: 10 data bytes
+18 bytes from 194.221.63.37: icmp_seq=0. time=1410. ms
+18 bytes from 194.221.63.37: icmp_seq=1. time=1070. ms
+18 bytes from 194.221.63.37: icmp_seq=2. time=430. ms
+18 bytes from 194.221.63.37: icmp_seq=3. time=470. ms
+
+----www.AgiX.NET PING Statistics----
+10 packets transmitted, 10 packets received, 0% packet loss
+round-trip (ms)  min/avg/max = 430/604/1410
+
+
+##################################################################
+# Windows 2000 french locale
+Platform: Windows (french)
+
+ping command ping -l 56 -n 10 www.wanadoo.fr was:
+
+Envoi d'une requête 'ping' sur www.wanadoo.fr [193.252.19.189] avec 56 octets de données :
+
+Délai d'attente de la demande dépassé.
+Réponse de 193.252.19.189=A0: octets=56 temps=70 ms TTL=246
+Réponse de 193.252.19.189=A0: octets=56 temps=70 ms TTL=246
+Réponse de 193.252.19.189=A0: octets=56 temps=71 ms TTL=246
+Réponse de 193.252.19.189=A0: octets=56 temps=70 ms TTL=246
+Réponse de 193.252.19.189=A0: octets=56 temps=70 ms TTL=246
+Réponse de 193.252.19.189=A0: octets=56 temps=70 ms TTL=246
+Réponse de 193.252.19.189=A0: octets=56 temps=70 ms TTL=246
+Réponse de 193.252.19.189=A0: octets=56 temps=80 ms TTL=246
+Réponse de 193.252.19.189=A0: octets=56 temps=70 ms TTL=246
+
+Statistiques Ping pour 193.252.19.189:
+    Paquets : envoyés = 10, reçus = 9, perdus = 1 (perte 10%), 
+Durée approximative des boucles en millisecondes :
+    minimum = 70ms, maximum = 80ms, moyenne = 64ms
+
+
+##################################################################
+# Windows portugesee locale
+# From: "Luis Rafael" <lrafael@ipg.pt>
+# Date: Tuesday, 23 May 2000 15:50:12 +0100
+Platform: Windows (portugesee)
+
+ping -l 56 -n 10 192.168.129.1
+
+A enviar para 192.168.129.1 com 56 bytes de dados:
+
+Resposta de 192.168.129.1: bytes=56 tempo=401ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=270ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=280ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=391ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=280ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=351ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=370ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=411ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=350ms Tempo de espera=254
+Resposta de 192.168.129.1: bytes=56 tempo=421ms Tempo de espera=254
+
+Estatística de 'ping' para 192.168.129.1:
+    Pacotes: Enviados = 10, Recebidos = 10, Perdidos = 0 (0% loss),
+Tempos aproximados de ida e volta em milissegundos:
+    Mínimo = 270ms, Máximo = 421ms, Média = 352ms
+
+
+##################################################################
+# Windows spanish locale
+# From: "Luis Carrizo" <luis-carrizo@ajvierci.com.py>
+# Date: Wed, 9 Aug 2000 16:38:44 -0300
+Platform: Windows (spanish)
+
+ping -l 56 -n 10 192.168.210.150
+
+Haciendo ping a 192.168.210.150 con 56 bytes de datos:
+
+Respuesta desde 192.168.210.150: bytes=56 tiempo=90ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=30ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=60ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=100ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=20ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=21ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=20ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=30ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=20ms TTL=127
+Respuesta desde 192.168.210.150: bytes=56 tiempo=20ms TTL=127
+
+Estadísticas de ping para 192.168.210.150:
+    Paquetes: enviados = 10, recibidos = 10, perdidos = 0 (0% perdidos),
+Tiempos aproximados de recorrido redondo en milisegundos:
+    mínimo = 20ms, máximo = 100ms, promedio = 41ms
+
+##################################################################
+# Windows spanish locale
+# From: "Javier Serebrisky" <javier.serebrisky@etelix.com>
+# Date: Sat Sep 13 08:18:25 PDT 2003
+Platform: Windows (spanish)
+
+ping -l 56 -n 10 200.62.14.49
+
+Haciendo ping a 200.62.14.49 con 56 bytes de datos:
+
+Respuesta desde 200.62.14.49: bytes=56 tiempo=31ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=47ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=31ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=31ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=31ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=16ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=32ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=16ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=16ms TTL=253
+Respuesta desde 200.62.14.49: bytes=56 tiempo=16ms TTL=253
+
+Estadísticas de ping para 200.62.14.49:
+    Paquetes: enviados = 10, recibidos = 10, perdidos = 0 (0% perdidos),
+Tiempos aproximados de recorrido redondo en milisegundos:
+    mínimo = 16ms, máximo =  47ms, promedio =  26ms
+
+
+
+
+##################################################################
+# Windows German (Deutsche) locale
+# From: root@solariz.de
+# Date: Tue, 2 Oct 2001 00:01:35 +0200
+Platform: Windows (german)
+
+ping web.de
+ 
+Ping web.de [217.72.195.42] mit 32 Bytes Daten:
+ 
+Antwort von 217.72.195.42: Bytes=32 Zeit=330ms TTL=246
+Antwort von 217.72.195.42: Bytes=32 Zeit=201ms TTL=246
+Antwort von 217.72.195.42: Bytes=32 Zeit=410ms TTL=246
+Antwort von 217.72.195.42: Bytes=32 Zeit=291ms TTL=246
+ 
+Ping-Statistik für 217.72.195.42:
+    Pakete: Gesendet = 4, Empfangen = 4, Verloren = 0 (0% Verlust),
+Ca. Zeitangaben in Millisek.:
+    Minimum = 201ms, Maximum =  410ms, Mittelwert =  308ms
+
+
+##################################################################
+# Windows Brazilian locale
+# From: Marcio Queiroz <marcioqueiroz@vicom.com.br
+# Date: Mon, 6 May 2002 19:45:12 -0300
+Platform: Windows (brazilian)
+
+Disparando contra 192.0.1.254 com 32 bytes de dados:
+ 
+Resposta de 192.0.1.254:bytes=32 tempo=1ms Tempo de vida=32
+Resposta de 192.0.1.254:bytes=32 tempo=1ms Tempo de vida=32
+Resposta de 192.0.1.254:bytes=32 tempo=1ms Tempo de vida=32
+Resposta de 192.0.1.254:bytes=32 tempo=1ms Tempo de vida=32
+ 
+Estatísticas do Ping para 192.0.1.254:
+    Pacotes: Enviados = 4, Recebidos = 4, Perdidos = 0 (0% de perda),
+Tempos aproximados de ida e volta em milissegundos:
+    Mínimo = 1ms, Média =  1ms, Máximo =  1ms
+
+
+##################################################################
+# Windows Colombian locale
+# From: Victor Maldonado <Victor.Maldonado@intesa.com.co> 
+# Date: Sun, 15 Jul 2001 21:08:08 -0500
+Platform: Windows (colombian)
+
+ping -l 56 -n 10 giron
+ 
+Haciendo ping a 10.57.50.1 con 56 bytes de datos:
+ 
+Respuesta desde 10.57.50.1: bytes=56 tiempo=70ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=70ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=70ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=71ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=70ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=70ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=70ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=80ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=70ms TDV=252
+Respuesta desde 10.57.50.1: bytes=56 tiempo=70ms TDV=252
+ 
+Estadísticas de ping para 10.57.50.1:
+    Paquetes: enviados = 10, Recibidos = 10, perdidos = 0 (0% loss),
+Tiempos aproximados de recorrido redondo en milisegundos:
+    mínimo = 70ms, máximo =  80ms, promedio =  71ms
+
+
+##################################################################
+# some linux
+Platform: Linux
+
+/bin/ping -c 10 -s 56 158
+PING 158.43.233.242 (158.43.233.242) from 194.203.52.252 : 56(84) bytes of data.
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=0 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=1 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=2 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=3 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=4 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=5 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=6 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=7 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=8 ttl=248 s
+64 bytes from so-7-0-0.xr1.LND2.alter.net (158.43.233.242): icmp_seq=9 ttl=248 s
+
+--- 158.43.233.242 ping statistics ---
+10 packets transmitted, 10 packets received, 0% packet loss
+round-trip min/avg/max = 30.0/30.4/31.1 ms
+
+
+##################################################################
+# RedHat 6.2, perl 5.005_03, mrtg 2.9.7.
+Platform: RedHat Linux 6.2
+
+/bin/ping -c 10 -s 56 213.38.168.1
+PING 213.38.168.1 (213.38.168.1) from 137.40.98.3 : 56(84) bytes of data.
+From 137.40.98.236: Redirect Host(New nexthop: 137.40.98.5)
+64 bytes from 213.38.168.1: icmp_seq=0 ttl=254 time=4.788 msec
+64 bytes from 213.38.168.1: icmp_seq=1 ttl=254 time=2.284 msec
+64 bytes from 213.38.168.1: icmp_seq=2 ttl=254 time=2.487 msec
+64 bytes from 213.38.168.1: icmp_seq=3 ttl=254 time=2.245 msec
+64 bytes from 213.38.168.1: icmp_seq=4 ttl=254 time=2.249 msec
+64 bytes from 213.38.168.1: icmp_seq=5 ttl=254 time=2.234 msec
+64 bytes from 213.38.168.1: icmp_seq=6 ttl=254 time=2.273 msec
+64 bytes from 213.38.168.1: icmp_seq=7 ttl=254 time=2.246 msec
+64 bytes from 213.38.168.1: icmp_seq=8 ttl=254 time=2.239 msec
+64 bytes from 213.38.168.1: icmp_seq=9 ttl=254 time=2.297 msec
+
+--- 213.38.168.1 ping statistics ---
+10 packets transmitted, 10 packets received, 0% packet loss
+round-trip min/avg/max/mdev = 2.234/2.534/4.788/0.755 ms
+
+
+##################################################################
+# Red Hat Linux 7.0
+# Linux stats 2.2.16-22smp #1 SMP Tuesday Aug 22 16:39:21 EDT 2000 i686 unknown
+# /bin/ping
+# usage: ping [-LRdfnqrv] [-c count] [-i wait] [-l preload]
+#	[-p pattern] [-s packetsize] [-t ttl] [-I interface address] host
+Platform: RedHat Linux 7.0
+
+RedHat7> /bin/ping.orig -c 10 -s 56 10.1.1.2
+PING 10.1.1.2 (10.1.1.2) from 10.1.2.19 : 56(84) bytes of data.
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=0 ttl=255 time=1.478 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=1 ttl=255 time=1.321 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=2 ttl=255 time=1.231 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=3 ttl=255 time=1.218 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=4 ttl=255 time=1.253 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=5 ttl=255 time=1.238 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=6 ttl=255 time=1.211 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=7 ttl=255 time=1.420 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=8 ttl=255 time=1.232 msec
+ 64 bytes from chandler-3810-e0-0.innovexinc.com (10.1.1.2): icmp_seq=9 ttl=255 time=1.227 msec
+
+--- 10.1.1.2 ping statistics ---
+10 packets transmitted, 10 packets received, 0% packet loss
+round-trip min/avg/max/mdev = 1.211/1.282/1.478/0.101 ms
+
+##################################################################
+# Red Hat Linux 7.3, perl 5.6.1, mrtg 2.9.17
+# Linux
+#
+Platform: RedHat Linux 7.3
+
+RedHat7.3> /bin/ping -c 4 -s 56 10.208.123.253
+PING 10.208.123.253 (10.208.123.253) from 139.160.64.2 : 56(84) bytes of data.
+64 bytes from 10.208.123.253: icmp_seq=1 ttl=27 time=181 ms
+64 bytes from 10.208.123.253: icmp_seq=2 ttl=27 time=175 ms
+64 bytes from 10.208.123.253: icmp_seq=3 ttl=27 time=166 ms
+ 
+--- 10.208.123.253 ping statistics ---
+4 packets transmitted, 3 received, 25% loss, time 2020ms
+rtt min/avg/max/mdev = 166.804/174.600/181.845/6.162 ms
+
+
+
+##################################################################
+# Platform: Linux-Mandrake 8.0
+# Kernel: 2.4.3-20mdk
+# Mrtg: mrtg-2.9.7-1mdk
+# Perl: perl-5.600-30mdk
+# 
+Platform: Mandrake Linux 8.0
+
+/bin/ping -c 2 -s 56 196.40.31.134
+PING taurus (196.40.31.134) from 196.40.31.184 : 56(84) bytes of data.
+64 bytes from taurus (196.40.31.134): icmp_seq=0 ttl=255 time=1.020 msec
+64 bytes from taurus (196.40.31.134): icmp_seq=1 ttl=255 time=1.201 msec
+     
+--- taurus ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max/mdev = 1.020/1.110/1.201/0.096 ms
+
+
+##################################################################
+# Platform: Linux 
+# Kernel: ?
+# Mrtg: ?
+# Perl: ?
+# 
+Platform: Linux 2.0.2 (iputils-ss010824)
+
+/bin/ping -c 11 -s 56 www.cisco.com
+PING www.cisco.com (198.133.219.25) from 217.75.224.146 : 56(84) bytes of data.
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=1 ttl=239 time=172.711 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=2 ttl=239 time=172.548 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=3 ttl=239 time=172.525 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=4 ttl=239 time=181.843 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=5 ttl=239 time=174.810 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=6 ttl=239 time=172.618 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=7 ttl=239 time=172.589 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=8 ttl=239 time=172.565 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=9 ttl=239 time=175.374 msec
+64 bytes from www.cisco.com (198.133.219.25): icmp_seq=10 ttl=239 time=173.704 msec
+ 
+--- www.cisco.com ping statistics ---
+11 packets transmitted, 10 received, 10% loss, time 9091ms
+rtt min/avg/max/mdev = 172.525/174.128/181.843/2.798 ms
+
+
+##################################################################
+# Platform: Mac OS X - Darwin 5.4
+# Kernel: Darwin Kernel Version 5.4: Wed Apr 10 09:27:47 PDT 2002
+#	root:xnu/xnu-201.19.3.obj~1/RELEASE_PPC  Power Macintosh powerpc
+#
+# ls -l /sbin/ping
+# -r-sr-xr-x  1 root  wheel  24180 Jan  3 11:28 /sbin/ping
+#
+# SYNOPSIS
+#  ping [-dfLnqRrv] [-c count] [-I ifaddr] [-i wait] [-l preload]
+#	[-p pattern] [-S ifaddr] [-s packetsize] [-t ttl] [-w maxwait] host
+Platform: Mac OS X (Darwin 5.4)
+
+/sbin/ping -c 10 ping.xs4all.nl
+PING asterix.xs4all.nl (194.109.6.11): 56 data bytes
+64 bytes from 194.109.6.11: icmp_seq=0 ttl=252 time=14.908 ms
+64 bytes from 194.109.6.11: icmp_seq=1 ttl=252 time=14.791 ms
+64 bytes from 194.109.6.11: icmp_seq=2 ttl=252 time=14.431 ms
+64 bytes from 194.109.6.11: icmp_seq=3 ttl=252 time=16.251 ms
+64 bytes from 194.109.6.11: icmp_seq=4 ttl=252 time=16.112 ms
+64 bytes from 194.109.6.11: icmp_seq=5 ttl=252 time=15.787 ms
+64 bytes from 194.109.6.11: icmp_seq=6 ttl=252 time=16.124 ms
+64 bytes from 194.109.6.11: icmp_seq=7 ttl=252 time=15.133 ms
+64 bytes from 194.109.6.11: icmp_seq=8 ttl=252 time=19.657 ms
+64 bytes from 194.109.6.11: icmp_seq=9 ttl=252 time=15.568 ms
+ 
+--- asterix.xs4all.nl ping statistics ---
+10 packets transmitted, 10 packets received, 0% packet loss
+round-trip min/avg/max = 14.431/15.876/19.657 ms
+
+
+##################################################################
+# Windows italian locale (Italy/Italian)
+# From: Reale Marco <Marco.Reale@secondamano.it>
+# Date: Tue, 2 Sep 2003 11:45:56 +0200
+Platform: Windows (italian)
+
+ping -l 56 -n 10 192.168.210.150
+##################################################################
+# Platform: Windows 2000 Italy/Italian
+#
+mrtg-ping-probe: ERROR: Could not find packet loss summary for mi02ito
+mrtg-ping-probe: INFO: The output of the ping command ping -l 56 -n 10 mi02ito
+as:
+
+Esecuzione di Ping mi02ito.smmi.it [172.16.201.201] con 56 byte di dati:
+
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata=16ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+Risposta da 172.16.201.201: byte=56 durata<10ms TTL=128
+
+Statistiche Ping per 172.16.201.201:
+    Pacchetti: Trasmessi = 10, Ricevuti = 10, Persi = 0 (0% persi),
+Tempo approssimativo percorsi andata/ritorno in millisecondi:
+    Minimo = 0ms, Massimo =  0ms, Medio =  0ms
+
+
+#EOF

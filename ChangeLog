@@ -1,0 +1,247 @@
+2003-09-13	Peter W. Osel	<pwo@pwo.de>
+
+	* Release 2_2_0
+
+	* mrtg-ping-probe, check-ping-fmt:
+		added support italian Windows loacale with the help of
+		Reale Marco <Marco.Reale@secondamano.it>
+
+	* mrtg-ping-probe:
+		on Windows actually return deadtime when we lost all
+		packets, not 0.  When the Windows ping loses all
+		packets (100% loss), it still returns a valid summary
+		with a rtt of 0.  Now we detect this case and reset the
+		rtt to the given deadtime, so the expected value is
+		returned.  bug reported by "Russ Grotewold"
+		<rgrotewold@adlercomputing.com>
+
+
+2003-02-23	Peter W. Osel	<pwo@pwo.de>
+
+	* ChangeLog, mrtg-ping-probe:
+		fixed spelling errors as pointed out by Francois
+		Wolmarans <fwo@obsidian.co.za> and by ispell(1).
+
+	* mrtg-ping-probe:
+		fixed killing of child process, the first argument of
+		the perl kill function has to be the signal.  Reported
+		by Wilfried Gaensheimer <wig@Micronas.com>.
+
+		raised minimum version of perl supported to 5.6.1
+
+		default to use /bin/perl and not /usr/local/bin/perl
+
+		initialize ping_output variable to empty string.
+
+	* extended copyright to current year
+
+
+2002-07-14	Peter W. Osel	<pwo@pwo.de>
+
+	* Release 2_1_0
+
+	* mrtg-ping-probe, check-ping-fmt:
+		added support for Mac OS X (Darwin 5.4), with the help
+		of Fred Inklaar <fred@airplant.net>.
+
+		added support for RedHat Linux 7.3 (and possibly other
+		new Linux distributions using new ping versions), with
+		the help of
+		Thomas Sailer <sailer@gamecube.hb9jnx.ampr.org>,
+		Ulf Viney <uviney@blueairnetworks.com>,
+		Enrique Iglesias Rodriguez <enrique@intelideas.net>,
+		Martin <anonymous@sol.dk>,
+		and <winniethepooh@libertysurf.fr>.
+
+		added support for parsing the windows ping output in
+		different locales:
+		brazilian
+			with the help of
+			Marcio Queiroz <marcioqueiroz@vicom.com.br>
+		colombian
+			with the help of
+			Victor Maldonado <Victor.Maldonado@intesa.com.co>
+		german
+			with the help of <root@solariz.de> and
+			Harald Reisinger" <h.reisinger@base-camp.cc>
+
+	* mrtg-ping-probe, INSTALL:
+		***** Possible Incompatibility *****
+		on freebsd > 3.x 'ping -s' is only allowed to be used
+		by root.  We no longer pass the packet size option to
+		ping on freebsd, unless we run as root (which we
+		shouldn't).  Pointed out by Willem Jan Withagen
+		<wwithagen@vianetworks.nl>.
+
+	* check-ping-fmt:
+		added copyright message
+
+	* extended copyright to current year, changed my mail address
+		from pwo@guug.de to pwo@pwo.de.
+
+	* README:
+		added link to smokeping, the mrtg of latency monitoring
+
+
+2001-01-21	Peter W. Osel	<pwo@pwo.de>
+
+	* Release 2_0_2
+
+
+2001-01-08	Peter W. Osel	<pwo@pwo.de>
+
+	* mrtg-ping-probe:
+		further fine tuning and simplifying the regular
+		expressions to match ping's output on FreeBSD 4.x,
+		RedHat 6.x, and Solaris 7 with the help of David
+		Richardson <dlr@rhinointernet.com> and James Eborall
+		<james.eborall@mci.co.uk>.
+
+
+2001-01-07	Peter W. Osel	<pwo@pwo.de>
+
+	* Release 2_0_1
+
+	* mrtg-ping-probe:
+		verify that alarm() function exists.  I have not found
+		a perl distribution that implements the alarm() built-in
+		function on Win32.  It seems that you cannot timeout on
+		most blocking system calls on Win32.  Blame Microsoft ;-).
+
+		fixed regular expressions for round trip time and
+		packet loss summaries.  Almost all but Solaris did no
+		longer match.
+
+2001-01-06	Peter W. Osel	<pwo@pwo.de>
+
+	* Release 2_0_0
+
+	* Makefile: added initial support to generate pgp signed md5
+	checksum files for tar/shar/zip archives to protect against
+	trojan horses.
+
+2001-01-02	Peter W. Osel	<pwo@pwo.de>
+
+	* mrtg-ping-probe:
+		The pick-list now allows to multiply the ping returned
+		value by an integer factor (e.g. to multiply by 1000 to
+		graph LAN ping times smaller than a millisecond with
+		pings returning fractions of a millisecond).
+
+		Introduced the -D debug option to control the insanity
+		increase imposed on me programming mrtg-ping-probe.
+
+	* mrtg-ping-probe, check-ping-fmt:
+		match and pass fractional ping times all the way up,
+		convert to integer after multiplying with the given
+		factor, just before we print the values
+
+		merged regular expressions of different windows locales
+		together, probably catching more locales now.
+
+
+2001-01-01	Peter W. Osel	<pwo@pwo.de>
+
+	* mrtg-ping-probe:
+
+		added support for RedHat 7, with the help of Scott
+		Shipley <SShipley@innovexinc.com>.  RedHat 7 prints
+		"mdev" instead of "stddev".
+
+	* mrtg-ping-probe, check-ping-fmt:
+
+		added support for parsing the windows ping output in
+		different locales:
+		french
+			contributed by Jerome Moinet
+			<jerome@moinet.org>,
+			with the help of Nicolas
+			<ndsoftware@ndsoftware.net>
+		portugesee
+			with the help of Luis Rafael <lrafael@ipg.pt>
+		spanish
+			with the help of Luis Carrizo
+			<luis-carrizo@ajvierci.com.py>
+
+
+2000-09-03	Peter W. Osel	<pwo@pwo.de>
+
+	* mrtg-ping-probe:
+		added timeout option to abort external ping programs
+		that seem to hang (i.e. wait to _receive_ the given
+		number of ECHO_RESPONSE packets, instead of just
+		sending them;  if your target is unreachable, these
+		pings ping forever ...); based on a contribution by
+		Peter "Pete" Chen <petechen@on2.com>.
+
+		added option to set deadtime (the value we return when
+		we assume that the target is unreachable).
+
+		added option -s (silent mode) to suppress error messages
+		in case the ping times out or the target is unreachable.
+
+		added option -p (pick/print) to select which values to
+		print.  valid arguments are: min/max/avg/loss/number.
+		Finally we have support to graph packet loss ;-)
+
+		new function check_numeric() to check numeric arguments
+
+		prepared for adding internal, perl based ping.
+
+		do not setup redirection for OS/2.  OS/2 does like
+		stderr redirection we use in Unix (2>&1), but Perl
+		tries to be "smart" about when to run a command
+		directly and when to run it via the shell.  Presumably
+		it gets it wrong in this case.  pointed out by Voytek
+		Eymont <voytek@sbt.net.au>
+
+		added support for OpenBSD, contributed by Xander
+		Soldaat <xander@soldaat.com>
+
+	* mrtg.cfg-ping: added example for new Packet Loss monitoring.
+
+
+	* INSTALL: extended copyright to current year, updated URLs for
+		software, added hint when to configure a timeout option.
+
+	* README: updated URLs for software
+
+
+	* mrtg-ping-probe, README: extended copyright to current year,
+		added support for NetBSD (contributed by Ola Eriksson
+		<ola@udd.net>).
+
+
+2000-01-29	Peter W. Osel	<pwo@pwo.de>
+
+	* COPYRIGHT: restricted copyright to version 2 of the GNU
+		General Public License
+
+
+1999-01-01	Peter W. Osel	<pwo@pwo.de>
+
+	* mrtg-ping-probe: new option -o to pass options to the
+	ping program called.
+
+	* changed RCS keywords to include SCCS magic string @(#) such
+	that the SCCS what(1) command displays them.
+
+	* COPYRIGHT, README, check-ping-fmt, mrtg-ping-probe,
+	mrtg-ping-success-probe: extended copyright to current year.
+
+	* README: described where to find the latest release.  Added
+	hint to act responsible.
+
+	* README, INSTALL: general cleanup, moved parts back and forth
+	between these two files, to a hopefully more logical split.
+
+	* NEWS: changed date format from yyyy/mm/dd to yyyy-mm-dd
+
+	* mrtg-ping-probe: do not redirect stderr for MSWin32;  Windows
+	95/98 do not support this - they create the file '&1' and print
+	an error message 'Bad parameter 2'.  Windows NT does support
+	stderr redirection, but the ping programs don't print anything
+	to stderr.  So why bother ;-).  Fix provided by Pavel Juran
+	<juran@proca.cz>.
+
+	* ChangeLog: new file to log changes in great details
